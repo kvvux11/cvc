@@ -10,7 +10,8 @@ const {
 } = require('discord.js');
 
 const config = require('../config');
-const { canUseTicketTools } = require('./permissions');
+const { canUseTicketTools, isOwner } = require('./permissions');
+const { getProfile } = require('./levels');
 const { logInfo } = require('./logger');
 
 const ticketOwners = new Map();
@@ -50,16 +51,16 @@ function applicationPanelEmbed() {
     .setDescription('Apply below if you actually want to help the server. Don’t troll apps.')
     .addFields(
       {
+        name: 'Ticket Support Requirements',
+        value: '• Level 0+\n• 15+\n• can help in tickets\n• patient\n• decent grammar\n• active enough to be useful',
+      },
+      {
         name: 'Moderator Requirements',
-        value: '• 16+\n• decent mic\n• active in the server\n• Level 5+\n• can stay calm and not make things worse',
+        value: '• Level 5+\n• 16+\n• decent mic\n• active in the server\n• can stay calm and not make things worse',
       },
       {
         name: 'Administrator Requirements',
-        value: '• 17+\n• working mic\n• Level 10+\n• trusted\n• active often\n• knows how to handle people properly',
-      },
-      {
-        name: 'Ticket Support Requirements',
-        value: '• 15+\n• can help in tickets\n• patient\n• decent grammar\n• active enough to be useful',
+        value: '• Level 10+\n• 17+\n• working mic\n• trusted\n• active often\n• knows how to handle people properly',
       }
     )
     .setFooter({ text: 'Accept = accepted for interview, not instantly hired.' });
@@ -67,58 +68,139 @@ function applicationPanelEmbed() {
 
 function ticketButtons() {
   return new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('ticket_general').setLabel('General Support').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('ticket_car').setLabel('Car Help').setStyle(ButtonStyle.Primary),
-    new ButtonBuilder().setCustomId('ticket_vip').setLabel('VIP Help').setStyle(ButtonStyle.Success),
-    new ButtonBuilder().setCustomId('ticket_other').setLabel('Other').setStyle(ButtonStyle.Secondary)
+    new ButtonBuilder()
+      .setCustomId('ticket_general')
+      .setLabel('General Support')
+      .setStyle(ButtonStyle.Secondary),
+
+    new ButtonBuilder()
+      .setCustomId('ticket_car')
+      .setLabel('Car Help')
+      .setStyle(ButtonStyle.Primary),
+
+    new ButtonBuilder()
+      .setCustomId('ticket_vip')
+      .setLabel('VIP Help')
+      .setStyle(ButtonStyle.Success),
+
+    new ButtonBuilder()
+      .setCustomId('ticket_other')
+      .setLabel('Other')
+      .setStyle(ButtonStyle.Secondary)
   );
 }
 
 function reportButtons() {
   return new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('report_member').setLabel('Report Member').setStyle(ButtonStyle.Danger),
-    new ButtonBuilder().setCustomId('report_staff').setLabel('Report Staff').setStyle(ButtonStyle.Danger),
-    new ButtonBuilder().setCustomId('report_scam').setLabel('Scam / Fake Listing').setStyle(ButtonStyle.Danger)
+    new ButtonBuilder()
+      .setCustomId('report_member')
+      .setLabel('Report Member')
+      .setStyle(ButtonStyle.Danger),
+
+    new ButtonBuilder()
+      .setCustomId('report_staff')
+      .setLabel('Report Staff')
+      .setStyle(ButtonStyle.Danger),
+
+    new ButtonBuilder()
+      .setCustomId('report_scam')
+      .setLabel('Scam / Fake Listing')
+      .setStyle(ButtonStyle.Danger)
   );
 }
 
 function applicationButtons() {
   return new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('apply_mod').setLabel('Apply Moderator').setStyle(ButtonStyle.Primary),
-    new ButtonBuilder().setCustomId('apply_admin').setLabel('Apply Administrator').setStyle(ButtonStyle.Danger),
-    new ButtonBuilder().setCustomId('apply_support').setLabel('Apply Ticket Support').setStyle(ButtonStyle.Success)
+    new ButtonBuilder()
+      .setCustomId('apply_support')
+      .setLabel('Apply Ticket Support')
+      .setStyle(ButtonStyle.Success),
+
+    new ButtonBuilder()
+      .setCustomId('apply_mod')
+      .setLabel('Apply Moderator')
+      .setStyle(ButtonStyle.Primary),
+
+    new ButtonBuilder()
+      .setCustomId('apply_admin')
+      .setLabel('Apply Administrator')
+      .setStyle(ButtonStyle.Danger)
   );
 }
 
 function staffButtons() {
   return new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('ticket_claim').setLabel('Claim').setStyle(ButtonStyle.Primary),
-    new ButtonBuilder().setCustomId('ticket_accept').setLabel('Accept').setStyle(ButtonStyle.Success),
-    new ButtonBuilder().setCustomId('ticket_deny').setLabel('Deny').setStyle(ButtonStyle.Danger),
-    new ButtonBuilder().setCustomId('ticket_close').setLabel('Close').setStyle(ButtonStyle.Secondary)
+    new ButtonBuilder()
+      .setCustomId('ticket_claim')
+      .setLabel('Claim')
+      .setStyle(ButtonStyle.Primary),
+
+    new ButtonBuilder()
+      .setCustomId('ticket_accept')
+      .setLabel('Accept')
+      .setStyle(ButtonStyle.Success),
+
+    new ButtonBuilder()
+      .setCustomId('ticket_deny')
+      .setLabel('Deny')
+      .setStyle(ButtonStyle.Danger),
+
+    new ButtonBuilder()
+      .setCustomId('ticket_close')
+      .setLabel('Close')
+      .setStyle(ButtonStyle.Secondary)
   );
 }
 
 function getApplicationMeta(type) {
   const data = {
+    support: {
+      title: 'Ticket Support Application',
+      label: 'Ticket Support',
+      interviewRole: config.roles.awaitingSupportInterview,
+      requiredLevel: 0,
+    },
     mod: {
       title: 'Moderator Application',
       label: 'Moderator',
       interviewRole: config.roles.awaitingModInterview,
+      requiredLevel: 5,
     },
     admin: {
       title: 'Administrator Application',
       label: 'Administrator',
       interviewRole: config.roles.awaitingAdminInterview,
-    },
-    support: {
-      title: 'Ticket Support Application',
-      label: 'Ticket Support',
-      interviewRole: config.roles.awaitingSupportInterview,
+      requiredLevel: 10,
     },
   };
 
   return data[type];
+}
+
+function canApplyFor(member, type) {
+  const meta = getApplicationMeta(type);
+
+  if (!meta) {
+    return {
+      allowed: false,
+      reason: 'That application type does not exist.',
+    };
+  }
+
+  if (isOwner(member)) {
+    return { allowed: true };
+  }
+
+  const profile = getProfile(member.guild.id, member.id);
+
+  if (profile.level < meta.requiredLevel) {
+    return {
+      allowed: false,
+      reason: `You need to be **Level ${meta.requiredLevel}** to apply for **${meta.label}**. You are currently **Level ${profile.level}**.`,
+    };
+  }
+
+  return { allowed: true };
 }
 
 function makeApplicationModal(type) {
@@ -352,16 +434,43 @@ async function handleTicketButton(interaction, client) {
     return createForumTicket(interaction, client, type, title);
   }
 
+  if (id === 'apply_support') {
+    const check = canApplyFor(interaction.member, 'support');
+
+    if (!check.allowed) {
+      return interaction.reply({
+        content: check.reason,
+        ephemeral: true,
+      });
+    }
+
+    return interaction.showModal(makeApplicationModal('support'));
+  }
+
   if (id === 'apply_mod') {
+    const check = canApplyFor(interaction.member, 'mod');
+
+    if (!check.allowed) {
+      return interaction.reply({
+        content: check.reason,
+        ephemeral: true,
+      });
+    }
+
     return interaction.showModal(makeApplicationModal('mod'));
   }
 
   if (id === 'apply_admin') {
-    return interaction.showModal(makeApplicationModal('admin'));
-  }
+    const check = canApplyFor(interaction.member, 'admin');
 
-  if (id === 'apply_support') {
-    return interaction.showModal(makeApplicationModal('support'));
+    if (!check.allowed) {
+      return interaction.reply({
+        content: check.reason,
+        ephemeral: true,
+      });
+    }
+
+    return interaction.showModal(makeApplicationModal('admin'));
   }
 
   if (!['ticket_claim', 'ticket_accept', 'ticket_deny', 'ticket_close'].includes(id)) return;
