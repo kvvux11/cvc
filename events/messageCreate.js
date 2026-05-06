@@ -2,12 +2,18 @@ const { Events } = require('discord.js');
 const config = require('../config');
 const { addMessageXp } = require('../systems/levels');
 const { handlePrefixCommand } = require('../systems/prefixCommands');
+const { handleApplicationDM } = require('../systems/tickets');
 
 module.exports = {
   name: Events.MessageCreate,
 
   async execute(message, client) {
-    if (!message.guild || message.author.bot) return;
+    if (message.author.bot) return;
+
+    if (!message.guild) {
+      await handleApplicationDM(message, client);
+      return;
+    }
 
     if (message.mentions.users.has(config.ownerId) && message.author.id !== config.ownerId) {
       await message.reply({

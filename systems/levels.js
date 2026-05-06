@@ -62,7 +62,7 @@ async function giveLevelRoles(member, level) {
 
   for (const reward of rewards) {
     if (level >= reward.level && !member.roles.cache.has(reward.role)) {
-      await member.roles.add(reward.role).catch(() => {});
+      await member.roles.add(reward.role).catch(console.error);
     }
   }
 }
@@ -83,7 +83,10 @@ async function announceLevelUp(guild, member, level, source = 'Chat') {
     .setFooter({ text: 'Cruel Violations Customs' })
     .setTimestamp();
 
-  await channel.send({ embeds: [embed] }).catch(() => {});
+  await channel.send({
+    content: `${member}`,
+    embeds: [embed],
+  }).catch(console.error);
 }
 
 async function awardXp(guild, member, amount, source = 'Chat') {
@@ -100,10 +103,29 @@ async function awardXp(guild, member, amount, source = 'Chat') {
     WHERE guild_id = ? AND user_id = ?
   `).run(newXp, newLevel, guild.id, member.id);
 
+  await giveLevelRoles(member, newLevel);
+
   if (newLevel > oldLevel) {
-    await giveLevelRoles(member, newLevel);
     await announceLevelUp(guild, member, newLevel, source);
   }
+}
+
+async function setUserLevel(guild, member, level, source = 'Staff Update') {
+  const newLevel = Math.max(0, level);
+  const newXp = xpForLevel(newLevel);
+
+  getUser(guild.id, member.id);
+
+  db.prepare(`
+    UPDATE levels
+    SET xp = ?, level = ?
+    WHERE guild_id = ? AND user_id = ?
+  `).run(newXp, newLevel, guild.id, member.id);
+
+  await giveLevelRoles(member, newLevel);
+  await announceLevelUp(guild, member, newLevel, source);
+
+  return { xp: newXp, level: newLevel };
 }
 
 async function addMessageXp(message) {
@@ -125,8 +147,9 @@ async function addMessageXp(message) {
     WHERE guild_id = ? AND user_id = ?
   `).run(newXp, newLevel, now, message.guild.id, message.author.id);
 
+  await giveLevelRoles(message.member, newLevel);
+
   if (newLevel > oldLevel) {
-    await giveLevelRoles(message.member, newLevel);
     await announceLevelUp(message.guild, message.member, newLevel, 'Chat');
   }
 }
@@ -145,7 +168,6 @@ async function runVoiceXpSweep(client) {
     if (voice.channelId === guild.afkChannelId) return false;
 
     const realUsersInChannel = voice.channel.members.filter(m => !m.user.bot).size;
-
     return realUsersInChannel >= 2;
   });
 
@@ -188,5 +210,8 @@ module.exports = {
   getProfile,
   getLeaderboard,
   setXp,
+  setUserLevel,
+  giveLevelRoles,
+  announceLevelUp,
   xpForLevel,
 };

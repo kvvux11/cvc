@@ -9,10 +9,24 @@ const {
   TextInputStyle,
 } = require('discord.js');
 
+const Database = require('better-sqlite3');
 const config = require('../config');
-const { canUseTicketTools, isOwner } = require('./permissions');
+const { canUseTicketTools } = require('./permissions');
 const { getProfile } = require('./levels');
 const { logInfo } = require('./logger');
+
+const db = new Database('./database.sqlite');
+
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS applications (
+    user_id TEXT PRIMARY KEY,
+    guild_id TEXT NOT NULL,
+    thread_id TEXT NOT NULL,
+    type TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'awaiting_dm',
+    created_at INTEGER NOT NULL
+  )
+`).run();
 
 const ticketOwners = new Map();
 const ticketTypesByThread = new Map();
@@ -48,7 +62,7 @@ function applicationPanelEmbed() {
   return new EmbedBuilder()
     .setTitle('Staff Applications')
     .setColor(config.colors.red)
-    .setDescription('Apply below if you actually want to help the server. Don’t troll apps.')
+    .setDescription('Apply below if you actually want to help the server. The bot will DM you the application.')
     .addFields(
       {
         name: 'Ticket Support Requirements',
@@ -68,87 +82,35 @@ function applicationPanelEmbed() {
 
 function ticketButtons() {
   return new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId('ticket_general')
-      .setLabel('General Support')
-      .setStyle(ButtonStyle.Secondary),
-
-    new ButtonBuilder()
-      .setCustomId('ticket_car')
-      .setLabel('Car Help')
-      .setStyle(ButtonStyle.Primary),
-
-    new ButtonBuilder()
-      .setCustomId('ticket_vip')
-      .setLabel('VIP Help')
-      .setStyle(ButtonStyle.Success),
-
-    new ButtonBuilder()
-      .setCustomId('ticket_other')
-      .setLabel('Other')
-      .setStyle(ButtonStyle.Secondary)
+    new ButtonBuilder().setCustomId('ticket_general').setLabel('General Support').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('ticket_car').setLabel('Car Help').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId('ticket_vip').setLabel('VIP Help').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId('ticket_other').setLabel('Other').setStyle(ButtonStyle.Secondary)
   );
 }
 
 function reportButtons() {
   return new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId('report_member')
-      .setLabel('Report Member')
-      .setStyle(ButtonStyle.Danger),
-
-    new ButtonBuilder()
-      .setCustomId('report_staff')
-      .setLabel('Report Staff')
-      .setStyle(ButtonStyle.Danger),
-
-    new ButtonBuilder()
-      .setCustomId('report_scam')
-      .setLabel('Scam / Fake Listing')
-      .setStyle(ButtonStyle.Danger)
+    new ButtonBuilder().setCustomId('report_member').setLabel('Report Member').setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId('report_staff').setLabel('Report Staff').setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId('report_scam').setLabel('Scam / Fake Listing').setStyle(ButtonStyle.Danger)
   );
 }
 
 function applicationButtons() {
   return new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId('apply_support')
-      .setLabel('Apply Ticket Support')
-      .setStyle(ButtonStyle.Success),
-
-    new ButtonBuilder()
-      .setCustomId('apply_mod')
-      .setLabel('Apply Moderator')
-      .setStyle(ButtonStyle.Primary),
-
-    new ButtonBuilder()
-      .setCustomId('apply_admin')
-      .setLabel('Apply Administrator')
-      .setStyle(ButtonStyle.Danger)
+    new ButtonBuilder().setCustomId('apply_support').setLabel('Apply Ticket Support').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId('apply_mod').setLabel('Apply Moderator').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId('apply_admin').setLabel('Apply Administrator').setStyle(ButtonStyle.Danger)
   );
 }
 
 function staffButtons() {
   return new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId('ticket_claim')
-      .setLabel('Claim')
-      .setStyle(ButtonStyle.Primary),
-
-    new ButtonBuilder()
-      .setCustomId('ticket_accept')
-      .setLabel('Accept')
-      .setStyle(ButtonStyle.Success),
-
-    new ButtonBuilder()
-      .setCustomId('ticket_deny')
-      .setLabel('Deny')
-      .setStyle(ButtonStyle.Danger),
-
-    new ButtonBuilder()
-      .setCustomId('ticket_close')
-      .setLabel('Close')
-      .setStyle(ButtonStyle.Secondary)
+    new ButtonBuilder().setCustomId('ticket_claim').setLabel('Claim').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId('ticket_accept').setLabel('Accept').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId('ticket_deny').setLabel('Deny').setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId('ticket_close').setLabel('Close').setStyle(ButtonStyle.Secondary)
   );
 }
 
@@ -159,18 +121,24 @@ function getApplicationMeta(type) {
       label: 'Ticket Support',
       interviewRole: config.roles.awaitingSupportInterview,
       requiredLevel: 0,
+      questions:
+        '1. How old are you?\n2. What timezone are you in?\n3. How active can you be?\n4. Why do you want Ticket Support?\n5. How would you help someone in a ticket?\n6. Do you have any past staff/support experience?',
     },
     mod: {
       title: 'Moderator Application',
       label: 'Moderator',
       interviewRole: config.roles.awaitingModInterview,
       requiredLevel: 5,
+      questions:
+        '1. How old are you?\n2. What timezone are you in?\n3. Do you have a working mic?\n4. Why do you want Moderator?\n5. What would you do if two members are arguing?\n6. What would you do if your friend breaks a rule?\n7. Any past staff experience?',
     },
     admin: {
       title: 'Administrator Application',
       label: 'Administrator',
       interviewRole: config.roles.awaitingAdminInterview,
       requiredLevel: 10,
+      questions:
+        '1. How old are you?\n2. What timezone are you in?\n3. Do you have a working mic?\n4. Why do you want Admin?\n5. Have you staffed before?\n6. When would you ban someone instead of timing them out?\n7. How would you handle staff abusing power?\n8. Why should we trust you with admin perms?',
     },
   };
 
@@ -187,10 +155,6 @@ function canApplyFor(member, type) {
     };
   }
 
-  if (isOwner(member)) {
-    return { allowed: true };
-  }
-
   const profile = getProfile(member.guild.id, member.id);
 
   if (profile.level < meta.requiredLevel) {
@@ -203,64 +167,11 @@ function canApplyFor(member, type) {
   return { allowed: true };
 }
 
-function makeApplicationModal(type) {
-  const meta = getApplicationMeta(type);
-
-  const modal = new ModalBuilder()
-    .setCustomId(`application_modal:${type}`)
-    .setTitle(meta.title);
-
-  const age = new TextInputBuilder()
-    .setCustomId('age')
-    .setLabel('Age')
-    .setStyle(TextInputStyle.Short)
-    .setRequired(true)
-    .setMaxLength(20);
-
-  const timezone = new TextInputBuilder()
-    .setCustomId('timezone')
-    .setLabel('Timezone / active times')
-    .setStyle(TextInputStyle.Short)
-    .setRequired(true)
-    .setMaxLength(100);
-
-  const experience = new TextInputBuilder()
-    .setCustomId('experience')
-    .setLabel('Any past experience?')
-    .setStyle(TextInputStyle.Paragraph)
-    .setRequired(true)
-    .setMaxLength(1000);
-
-  const why = new TextInputBuilder()
-    .setCustomId('why')
-    .setLabel('Why do you want this role?')
-    .setStyle(TextInputStyle.Paragraph)
-    .setRequired(true)
-    .setMaxLength(1000);
-
-  const extra = new TextInputBuilder()
-    .setCustomId('extra')
-    .setLabel('Tell us about you / how you handle people')
-    .setStyle(TextInputStyle.Paragraph)
-    .setRequired(true)
-    .setMaxLength(1000);
-
-  modal.addComponents(
-    new ActionRowBuilder().addComponents(age),
-    new ActionRowBuilder().addComponents(timezone),
-    new ActionRowBuilder().addComponents(experience),
-    new ActionRowBuilder().addComponents(why),
-    new ActionRowBuilder().addComponents(extra)
-  );
-
-  return modal;
-}
-
-async function dmUser(client, userId, embed) {
+async function dmUser(client, userId, embed, content = null) {
   const user = await client.users.fetch(userId).catch(() => null);
   if (!user) return false;
 
-  await user.send({ embeds: [embed] }).catch(() => null);
+  await user.send({ content, embeds: [embed] }).catch(() => null);
   return true;
 }
 
@@ -307,73 +218,157 @@ async function createForumTicket(interaction, client, type, title) {
   });
 }
 
-async function createApplicationPost(interaction, client, type) {
+async function startApplication(interaction, client, type) {
   const meta = getApplicationMeta(type);
-  const forum = await interaction.guild.channels.fetch(config.channels.reportsForum).catch(() => null);
+  const check = canApplyFor(interaction.member, type);
 
-  if (!forum || forum.type !== ChannelType.GuildForum) {
+  if (!check.allowed) {
     return interaction.reply({
-      content: 'Reports forum was not found or is not a forum channel.',
+      content: check.reason,
       ephemeral: true,
     });
   }
 
-  const age = interaction.fields.getTextInputValue('age');
-  const timezone = interaction.fields.getTextInputValue('timezone');
-  const experience = interaction.fields.getTextInputValue('experience');
-  const why = interaction.fields.getTextInputValue('why');
-  const extra = interaction.fields.getTextInputValue('extra');
+  const existing = db.prepare(`
+    SELECT * FROM applications
+    WHERE user_id = ? AND status IN ('awaiting_dm', 'submitted', 'accepted_interview')
+  `).get(interaction.user.id);
 
-  const embed = new EmbedBuilder()
-    .setTitle(meta.title)
-    .setColor(config.colors.red)
-    .setDescription(`New ${meta.label.toLowerCase()} application.`)
-    .addFields(
-      { name: 'Applicant', value: `${interaction.user}`, inline: true },
-      { name: 'User ID', value: interaction.user.id, inline: true },
-      { name: 'Age', value: age, inline: true },
-      { name: 'Timezone / Active Times', value: timezone },
-      { name: 'Experience', value: experience },
-      { name: 'Why do they want it?', value: why },
-      { name: 'Extra', value: extra }
-    )
-    .setTimestamp();
+  if (existing) {
+    return interaction.reply({
+      content: 'You already have an active application. Wait for staff to handle it first.',
+      ephemeral: true,
+    });
+  }
+
+  const forum = await interaction.guild.channels.fetch(config.channels.reportsForum).catch(() => null);
+
+  if (!forum || forum.type !== ChannelType.GuildForum) {
+    return interaction.reply({
+      content: 'Applications forum was not found.',
+      ephemeral: true,
+    });
+  }
 
   const thread = await forum.threads.create({
     name: `${meta.label} App - ${interaction.user.username}`.slice(0, 90),
     message: {
-      content: `<@&${config.roles.staff}> <@&${config.roles.ticketSupport}>`,
-      embeds: [embed],
+      content: `<@&${config.roles.staff}>`,
+      embeds: [
+        new EmbedBuilder()
+          .setTitle(meta.title)
+          .setColor(config.colors.red)
+          .setDescription('Application started. Waiting for the applicant to answer the DM questions.')
+          .addFields(
+            { name: 'Applicant', value: `${interaction.user}`, inline: true },
+            { name: 'User ID', value: interaction.user.id, inline: true },
+            { name: 'Position', value: meta.label, inline: true },
+            { name: 'Status', value: 'Waiting for DM answers.' }
+          )
+          .setTimestamp(),
+      ],
       components: [staffButtons()],
     },
   });
 
+  db.prepare(`
+    INSERT OR REPLACE INTO applications
+    (user_id, guild_id, thread_id, type, status, created_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(interaction.user.id, interaction.guild.id, thread.id, type, 'awaiting_dm', Date.now());
+
   ticketOwners.set(thread.id, interaction.user.id);
   ticketTypesByThread.set(thread.id, `Application:${type}`);
 
-  await logInfo(client, 'Staff Application Created', `${interaction.user.tag} submitted a **${meta.label}** application.`, [
-    { name: 'Thread', value: `${thread}`, inline: true },
-  ]);
+  const dmEmbed = new EmbedBuilder()
+    .setTitle(meta.title)
+    .setColor(config.colors.red)
+    .setDescription(
+      `Reply to this DM with your application answers in **one message**.\n\nCopy the questions below and answer under each one.`
+    )
+    .addFields(
+      { name: 'Questions', value: meta.questions.slice(0, 1024) },
+      { name: 'Important', value: 'Do not send troll answers. Staff will review it when they can.' }
+    )
+    .setFooter({ text: 'Cruel Violations Customs Applications' })
+    .setTimestamp();
+
+  const dmSent = await dmUser(client, interaction.user.id, dmEmbed);
+
+  if (!dmSent) {
+    db.prepare('DELETE FROM applications WHERE user_id = ?').run(interaction.user.id);
+    await thread.setArchived(true).catch(() => {});
+
+    return interaction.reply({
+      content: 'I could not DM you. Turn on DMs from server members and try again.',
+      ephemeral: true,
+    });
+  }
 
   return interaction.reply({
-    content: `Your application was sent: ${thread}`,
+    content: 'Application started. Check your DMs and answer the questions there.',
     ephemeral: true,
   });
+}
+
+async function handleApplicationDM(message, client) {
+  const app = db.prepare(`
+    SELECT * FROM applications
+    WHERE user_id = ? AND status = 'awaiting_dm'
+  `).get(message.author.id);
+
+  if (!app) return;
+
+  const guild = await client.guilds.fetch(app.guild_id).catch(() => null);
+  if (!guild) return;
+
+  const thread = await guild.channels.fetch(app.thread_id).catch(() => null);
+  if (!thread) return;
+
+  const meta = getApplicationMeta(app.type);
+
+  const embed = new EmbedBuilder()
+    .setTitle(`${meta.label} Application Answers`)
+    .setColor(config.colors.red)
+    .addFields(
+      { name: 'Applicant', value: `${message.author}`, inline: true },
+      { name: 'User ID', value: message.author.id, inline: true },
+      { name: 'Position', value: meta.label, inline: true },
+      { name: 'Answers', value: message.content.slice(0, 3900) || 'No text provided.' }
+    )
+    .setTimestamp();
+
+  await thread.send({
+    content: `<@&${config.roles.staff}> Application answers received.`,
+    embeds: [embed],
+  }).catch(() => {});
+
+  db.prepare(`
+    UPDATE applications
+    SET status = 'submitted'
+    WHERE user_id = ?
+  `).run(message.author.id);
+
+  await message.reply('Your application was submitted. Staff will review it soon.').catch(() => {});
 }
 
 async function handleAcceptedApplication(interaction, client, ownerId, appType) {
   const type = appType.replace('Application:', '');
   const meta = getApplicationMeta(type);
 
-  if (!meta) {
-    return false;
-  }
+  if (!meta) return false;
 
   const member = await interaction.guild.members.fetch(ownerId).catch(() => null);
 
   if (member && meta.interviewRole) {
     await member.roles.add(meta.interviewRole).catch(() => {});
   }
+
+  db.prepare(`
+    UPDATE applications
+    SET status = 'accepted_interview'
+    WHERE user_id = ?
+  `).run(ownerId);
 
   const acceptedChannel = await interaction.guild.channels
     .fetch(config.channels.acceptedApplications)
@@ -416,6 +411,22 @@ async function handleAcceptedApplication(interaction, client, ownerId, appType) 
   return true;
 }
 
+async function getThreadOwnerAndType(channelId) {
+  let ownerId = ticketOwners.get(channelId);
+  let threadType = ticketTypesByThread.get(channelId);
+
+  if (!ownerId || !threadType) {
+    const app = db.prepare('SELECT * FROM applications WHERE thread_id = ?').get(channelId);
+
+    if (app) {
+      ownerId = app.user_id;
+      threadType = `Application:${app.type}`;
+    }
+  }
+
+  return { ownerId, threadType };
+}
+
 async function handleTicketButton(interaction, client) {
   const id = interaction.customId;
 
@@ -435,42 +446,15 @@ async function handleTicketButton(interaction, client) {
   }
 
   if (id === 'apply_support') {
-    const check = canApplyFor(interaction.member, 'support');
-
-    if (!check.allowed) {
-      return interaction.reply({
-        content: check.reason,
-        ephemeral: true,
-      });
-    }
-
-    return interaction.showModal(makeApplicationModal('support'));
+    return startApplication(interaction, client, 'support');
   }
 
   if (id === 'apply_mod') {
-    const check = canApplyFor(interaction.member, 'mod');
-
-    if (!check.allowed) {
-      return interaction.reply({
-        content: check.reason,
-        ephemeral: true,
-      });
-    }
-
-    return interaction.showModal(makeApplicationModal('mod'));
+    return startApplication(interaction, client, 'mod');
   }
 
   if (id === 'apply_admin') {
-    const check = canApplyFor(interaction.member, 'admin');
-
-    if (!check.allowed) {
-      return interaction.reply({
-        content: check.reason,
-        ephemeral: true,
-      });
-    }
-
-    return interaction.showModal(makeApplicationModal('admin'));
+    return startApplication(interaction, client, 'admin');
   }
 
   if (!['ticket_claim', 'ticket_accept', 'ticket_deny', 'ticket_close'].includes(id)) return;
@@ -487,8 +471,7 @@ async function handleTicketButton(interaction, client) {
   }
 
   if (id === 'ticket_accept') {
-    const ownerId = ticketOwners.get(interaction.channel.id);
-    const threadType = ticketTypesByThread.get(interaction.channel.id);
+    const { ownerId, threadType } = await getThreadOwnerAndType(interaction.channel.id);
 
     if (ownerId && threadType?.startsWith('Application:')) {
       await handleAcceptedApplication(interaction, client, ownerId, threadType);
@@ -545,11 +528,6 @@ async function handleTicketButton(interaction, client) {
 }
 
 async function handleTicketModal(interaction, client) {
-  if (interaction.customId.startsWith('application_modal:')) {
-    const type = interaction.customId.split(':')[1];
-    return createApplicationPost(interaction, client, type);
-  }
-
   if (!interaction.customId.startsWith('ticket_deny_modal') && !interaction.customId.startsWith('ticket_close_modal')) return;
 
   if (!canUseTicketTools(interaction.member)) {
@@ -561,7 +539,7 @@ async function handleTicketModal(interaction, client) {
 
   const [modalType, channelId] = interaction.customId.split(':');
   const reason = interaction.fields.getTextInputValue('reason') || 'No reason provided.';
-  const ownerId = ticketOwners.get(channelId);
+  const { ownerId, threadType } = await getThreadOwnerAndType(channelId);
 
   if (modalType === 'ticket_deny_modal') {
     if (ownerId) {
@@ -576,6 +554,14 @@ async function handleTicketModal(interaction, client) {
         .setTimestamp();
 
       await dmUser(client, ownerId, dmEmbed);
+    }
+
+    if (threadType?.startsWith('Application:')) {
+      db.prepare(`
+        UPDATE applications
+        SET status = 'denied'
+        WHERE thread_id = ?
+      `).run(channelId);
     }
 
     await interaction.reply(`Denied by ${interaction.user}.\nReason: ${reason}`);
@@ -594,6 +580,14 @@ async function handleTicketModal(interaction, client) {
         .setTimestamp();
 
       await dmUser(client, ownerId, dmEmbed);
+    }
+
+    if (threadType?.startsWith('Application:')) {
+      db.prepare(`
+        UPDATE applications
+        SET status = 'closed'
+        WHERE thread_id = ?
+      `).run(channelId);
     }
 
     await interaction.reply(`Closed by ${interaction.user}.\nReason: ${reason}`);
@@ -622,4 +616,5 @@ module.exports = {
   applicationButtons,
   handleTicketButton,
   handleTicketModal,
+  handleApplicationDM,
 };

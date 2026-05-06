@@ -1,6 +1,6 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { canUseMod, deny, modCommandPermission } = require('../../systems/permissions');
-const { getProfile, setXp, xpForLevel } = require('../../systems/levels');
+const { getProfile, setUserLevel } = require('../../systems/levels');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -26,12 +26,19 @@ module.exports = {
 
     const user = interaction.options.getUser('user');
     const amount = interaction.options.getInteger('amount');
+    const member = await interaction.guild.members.fetch(user.id).catch(() => null);
+
+    if (!member) {
+      return interaction.reply({
+        content: 'Member not found.',
+        ephemeral: true,
+      });
+    }
 
     const profile = getProfile(interaction.guild.id, user.id);
     const newLevel = profile.level + amount;
-    const newXp = xpForLevel(newLevel);
 
-    setXp(interaction.guild.id, user.id, newXp);
+    await setUserLevel(interaction.guild, member, newLevel, 'Staff Level Update');
 
     await interaction.reply({
       content: `Added **${amount}** level(s) to ${user}. They are now **Level ${newLevel}**.`,
