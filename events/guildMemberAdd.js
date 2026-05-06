@@ -17,7 +17,7 @@ module.exports = {
       const embed = new EmbedBuilder()
         .setTitle('Welcome to Cruel Violations Customs')
         .setColor(config.colors.yellow)
-        .setDescription(`${member}, welcome to **CVC**. Check the rules, grab your roles, and enjoy the server.`)
+        .setDescription(`${member}, welcome to **CVC**. Check the rules, go have a chat, and have a look inside #faq if you need any help and most importantly, enjoy the server.`)
         .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 256 }))
         .setImage(config.gifs.welcome)
         .setFooter({ text: `Member #${member.guild.memberCount}` })

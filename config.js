@@ -70,17 +70,17 @@ module.exports = {
   },
 
   gifs: {
-    welcome:
-      'https://cdn.discordapp.com/attachments/1470958936600350721/1471282785061699584/Screen_Shot_2026-02-11_at_7.10.59_PM.png?ex=69fc739f&is=69fb221f&hm=16a34745f203d861c61a856e7977e2797505a53fa35754495e89868964bb8f9e&',
+  welcome:
+    'https://cdn.discordapp.com/attachments/1470958936600350721/1471282785061699584/Screen_Shot_2026-02-11_at_7.10.59_PM.png?ex=69fc739f&is=69fb221f&hm=16a34745f203d861c61a856e7977e2797505a53fa35754495e89868964bb8f9e&',
 
-    boost:
-      'https://cdn.discordapp.com/attachments/1470958936600350721/1471282784504119326/Screen_Shot_2026-02-11_at_7.11.13_PM.png?ex=69fc739e&is=69fb221e&hm=27eb5da925ceaa283397789d446e528122f17055a6a2d001793466929e669fdc&',
-  },
+  boost:
+    'https://cdn.discordapp.com/attachments/1470958936600350721/1471282784504119326/Screen_Shot_2026-02-11_at_7.11.13_PM.png?ex=69fc739e&is=69fb221e&hm=27eb5da925ceaa283397789d446e528122f17055a6a2d001793466929e669fdc&',
+},
 
-  images: {
-    levelUp:
-      'https://cdn.discordapp.com/attachments/1470958936600350721/1471282960064970974/Screen_Shot_2026-02-11_at_7.09.13_PM.png?ex=69fc73c8&is=69fb2248&hm=312d5565ecbe064ab1baf2fc0666622ff4b0e34163f77cde450749e5b1e1e422&',
-  },
+images: {
+  levelUp:
+    'https://cdn.discordapp.com/attachments/1470958936600350721/1471282960064970974/Screen_Shot_2026-02-11_at_7.09.13_PM.png?ex=69fc73c8&is=69fb2248&hm=312d5565ecbe064ab1baf2fc0666622ff4b0e34163f77cde450749e5b1e1e422&',
+},
 
   colors: {
     red: 0xff0000,
