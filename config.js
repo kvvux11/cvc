@@ -71,15 +71,15 @@ module.exports = {
 
   gifs: {
     welcome:
-      'https://tenor.com/view/grunge-fairycore-gif-23188446',
+      'https://cdn.discordapp.com/attachments/1470958936600350721/1471282785061699584/Screen_Shot_2026-02-11_at_7.10.59_PM.png?ex=69fc739f&is=69fb221f&hm=16a34745f203d861c61a856e7977e2797505a53fa35754495e89868964bb8f9e&',
 
     boost:
-      'https://imgs.search.brave.com/sdLYtJvUlrHt0F0BppZ_Xxk3W08-WkveRFlk8-neMrA/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9naWZk/Yi5jb20vaW1hZ2Vz/L2hpZ2gvZ3J1bmdl/LXNrdWxsLWdsaXRj/aC1kaWdpdGFsLWFy/dC1jcjFod2Vpencz/NHl3ejNwLmdpZg.gif',
+      'https://cdn.discordapp.com/attachments/1470958936600350721/1471282784504119326/Screen_Shot_2026-02-11_at_7.11.13_PM.png?ex=69fc739e&is=69fb221e&hm=27eb5da925ceaa283397789d446e528122f17055a6a2d001793466929e669fdc&',
   },
 
   images: {
     levelUp:
-      'https://tenor.com/view/red-dark-dog-smile-gif-8422768659000591178',
+      'https://cdn.discordapp.com/attachments/1470958936600350721/1471282960064970974/Screen_Shot_2026-02-11_at_7.09.13_PM.png?ex=69fc73c8&is=69fb2248&hm=312d5565ecbe064ab1baf2fc0666622ff4b0e34163f77cde450749e5b1e1e422&',
   },
 
   colors: {
