@@ -7,6 +7,7 @@ const {
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
+  PermissionFlagsBits,
 } = require('discord.js');
 
 const Database = require('better-sqlite3');
@@ -21,12 +22,29 @@ db.prepare(`
   CREATE TABLE IF NOT EXISTS applications (
     user_id TEXT PRIMARY KEY,
     guild_id TEXT NOT NULL,
-    thread_id TEXT NOT NULL,
+    thread_id TEXT,
     type TEXT NOT NULL,
-    status TEXT NOT NULL DEFAULT 'awaiting_dm',
+    status TEXT NOT NULL DEFAULT 'in_dm',
+    current_question INTEGER DEFAULT 0,
+    answers TEXT DEFAULT '[]',
+    strikes INTEGER DEFAULT 0,
     created_at INTEGER NOT NULL
   )
 `).run();
+
+function ensureColumn(table, column, definition) {
+  const columns = db.prepare(`PRAGMA table_info(${table})`).all();
+  const exists = columns.some(col => col.name === column);
+
+  if (!exists) {
+    db.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`).run();
+  }
+}
+
+ensureColumn('applications', 'thread_id', 'TEXT');
+ensureColumn('applications', 'current_question', 'INTEGER DEFAULT 0');
+ensureColumn('applications', 'answers', "TEXT DEFAULT '[]'");
+ensureColumn('applications', 'strikes', 'INTEGER DEFAULT 0');
 
 const ticketOwners = new Map();
 const ticketTypesByThread = new Map();
@@ -62,7 +80,7 @@ function applicationPanelEmbed() {
   return new EmbedBuilder()
     .setTitle('Staff Applications')
     .setColor(config.colors.red)
-    .setDescription('Apply below if you actually want to help the server. The bot will DM you the application.')
+    .setDescription('Apply below if you actually want to help the server. The bot will DM you the application one question at a time.')
     .addFields(
       {
         name: 'Ticket Support Requirements',
@@ -77,7 +95,7 @@ function applicationPanelEmbed() {
         value: '• Level 10+\n• 17+\n• working mic\n• trusted\n• active often\n• knows how to handle people properly',
       }
     )
-    .setFooter({ text: 'Accept = accepted for interview, not instantly hired.' });
+    .setFooter({ text: 'Low effort/fake answers will be denied.' });
 }
 
 function ticketButtons() {
@@ -121,24 +139,139 @@ function getApplicationMeta(type) {
       label: 'Ticket Support',
       interviewRole: config.roles.awaitingSupportInterview,
       requiredLevel: 0,
-      questions:
-        '1. How old are you?\n2. What timezone are you in?\n3. How active can you be?\n4. Why do you want Ticket Support?\n5. How would you help someone in a ticket?\n6. Do you have any past staff/support experience?',
+      minAge: 15,
+      questions: [
+        {
+          key: 'age',
+          text: 'How old are you?',
+          minLength: 1,
+          type: 'age',
+        },
+        {
+          key: 'timezone',
+          text: 'What timezone are you in, and when are you usually active?',
+          minLength: 8,
+        },
+        {
+          key: 'activity',
+          text: 'How active can you actually be in the server?',
+          minLength: 15,
+        },
+        {
+          key: 'why',
+          text: 'Why do you want Ticket Support?',
+          minLength: 25,
+        },
+        {
+          key: 'support_scenario',
+          text: 'Someone opens a ticket saying they need help finding a car. What would you say/do?',
+          minLength: 35,
+        },
+        {
+          key: 'experience',
+          text: 'Do you have any past staff/support experience? If not, say what makes you useful anyway.',
+          minLength: 25,
+        },
+      ],
     },
+
     mod: {
       title: 'Moderator Application',
       label: 'Moderator',
       interviewRole: config.roles.awaitingModInterview,
       requiredLevel: 5,
-      questions:
-        '1. How old are you?\n2. What timezone are you in?\n3. Do you have a working mic?\n4. Why do you want Moderator?\n5. What would you do if two members are arguing?\n6. What would you do if your friend breaks a rule?\n7. Any past staff experience?',
+      minAge: 16,
+      questions: [
+        {
+          key: 'age',
+          text: 'How old are you?',
+          minLength: 1,
+          type: 'age',
+        },
+        {
+          key: 'timezone',
+          text: 'What timezone are you in, and when are you usually active?',
+          minLength: 8,
+        },
+        {
+          key: 'mic',
+          text: 'Do you have a working mic?',
+          minLength: 2,
+          type: 'mic',
+        },
+        {
+          key: 'why',
+          text: 'Why do you want Moderator?',
+          minLength: 30,
+        },
+        {
+          key: 'argument',
+          text: 'Two members start arguing and insulting each other in chat. What do you do?',
+          minLength: 40,
+        },
+        {
+          key: 'friend_rulebreak',
+          text: 'Your friend breaks a rule and expects you to ignore it. What do you do?',
+          minLength: 35,
+        },
+        {
+          key: 'experience',
+          text: 'Any past staff experience? If yes, where? If no, why should we still consider you?',
+          minLength: 25,
+        },
+      ],
     },
+
     admin: {
       title: 'Administrator Application',
       label: 'Administrator',
       interviewRole: config.roles.awaitingAdminInterview,
       requiredLevel: 10,
-      questions:
-        '1. How old are you?\n2. What timezone are you in?\n3. Do you have a working mic?\n4. Why do you want Admin?\n5. Have you staffed before?\n6. When would you ban someone instead of timing them out?\n7. How would you handle staff abusing power?\n8. Why should we trust you with admin perms?',
+      minAge: 17,
+      questions: [
+        {
+          key: 'age',
+          text: 'How old are you?',
+          minLength: 1,
+          type: 'age',
+        },
+        {
+          key: 'timezone',
+          text: 'What timezone are you in, and when are you usually active?',
+          minLength: 8,
+        },
+        {
+          key: 'mic',
+          text: 'Do you have a working mic?',
+          minLength: 2,
+          type: 'mic',
+        },
+        {
+          key: 'why',
+          text: 'Why do you want Administrator?',
+          minLength: 40,
+        },
+        {
+          key: 'experience',
+          text: 'Have you staffed before? Explain where and what you did.',
+          minLength: 30,
+        },
+        {
+          key: 'ban_situation',
+          text: 'When would you ban someone instead of timing them out?',
+          minLength: 40,
+        },
+        {
+          key: 'staff_abuse',
+          text: 'How would you handle another staff member abusing power?',
+          minLength: 45,
+        },
+        {
+          key: 'trust',
+          text: 'Why should we trust you with admin perms and private staff info?',
+          minLength: 45,
+        },
+      ],
     },
   };
 
@@ -167,6 +300,138 @@ function canApplyFor(member, type) {
   return { allowed: true };
 }
 
+function parseAnswers(raw) {
+  try {
+    const parsed = JSON.parse(raw || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function isLowEffortAnswer(answer, question, meta) {
+  const cleaned = answer
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const badExact = [
+    'idk',
+    'i dont know',
+    "i don't know",
+    'dunno',
+    'no',
+    'nah',
+    'yes',
+    'yea',
+    'yeah',
+    'maybe',
+    'nothing',
+    'none',
+    'n/a',
+    'na',
+    'ok',
+    'okay',
+    'good',
+    'because',
+    'because i want it',
+    'i want it',
+    'for fun',
+    'staff',
+    'admin',
+    'mod',
+    'ticket',
+    '.',
+    '..',
+    '...',
+    '-',
+    'asdf',
+    'qwerty',
+    'blah',
+    'blah blah',
+    'skibidi',
+    'sigma',
+    'lol',
+    'lmao',
+  ];
+
+  if (badExact.includes(cleaned)) {
+    return {
+      bad: true,
+      reason: 'Your answer looked lazy/fake.',
+    };
+  }
+
+  if (/(.)\1{6,}/.test(cleaned)) {
+    return {
+      bad: true,
+      reason: 'Your answer looked like spam.',
+    };
+  }
+
+  if (question.type === 'age') {
+    const age = parseInt(cleaned.match(/\d+/)?.[0], 10);
+
+    if (!age || age < meta.minAge || age > 60) {
+      return {
+        bad: true,
+        reason: `You must be at least **${meta.minAge}** to apply for **${meta.label}**.`,
+      };
+    }
+
+    return { bad: false };
+  }
+
+  if (question.type === 'mic') {
+    if (!/(yes|yea|yeah|yep|i do|working|have one|no|nah|dont|don't)/i.test(cleaned)) {
+      return {
+        bad: true,
+        reason: 'Answer the mic question properly. Say if you have one or not.',
+      };
+    }
+
+    return { bad: false };
+  }
+
+  if (cleaned.length < question.minLength) {
+    return {
+      bad: true,
+      reason: 'Your answer was way too short.',
+    };
+  }
+
+  const wordCount = cleaned.split(' ').filter(Boolean).length;
+
+  if (wordCount < 5 && question.minLength >= 25) {
+    return {
+      bad: true,
+      reason: 'Your answer did not explain enough.',
+    };
+  }
+
+  const vaguePhrases = [
+    'i will help',
+    'i can help',
+    'im active',
+    "i'm active",
+    'i am active',
+    'i am good',
+    "i'm good",
+    'trust me',
+    'i deserve it',
+    'i just want to help',
+  ];
+
+  if (vaguePhrases.includes(cleaned)) {
+    return {
+      bad: true,
+      reason: 'Your answer was too vague. Staff need real answers, not one-liners.',
+    };
+  }
+
+  return { bad: false };
+}
+
 async function dmUser(client, userId, embed, content = null) {
   const user = await client.users.fetch(userId).catch(() => null);
   if (!user) return false;
@@ -175,45 +440,142 @@ async function dmUser(client, userId, embed, content = null) {
   return true;
 }
 
-async function createForumTicket(interaction, client, type, title) {
-  const forum = await interaction.guild.channels.fetch(config.channels.reportsForum).catch(() => null);
+function makeTicketChannelName(type, user) {
+  return `${type.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${user.username}`
+    .toLowerCase()
+    .slice(0, 90);
+}
 
-  if (!forum || forum.type !== ChannelType.GuildForum) {
-    return interaction.reply({
-      content: 'Reports forum was not found or is not a forum channel.',
-      ephemeral: true,
-    });
-  }
+function getTicketParentId(interaction) {
+  return interaction.channel?.parentId || null;
+}
+
+function normalTicketPermissions(interaction) {
+  return [
+    {
+      id: interaction.guild.roles.everyone.id,
+      deny: [PermissionFlagsBits.ViewChannel],
+    },
+    {
+      id: interaction.user.id,
+      allow: [
+        PermissionFlagsBits.ViewChannel,
+        PermissionFlagsBits.SendMessages,
+        PermissionFlagsBits.ReadMessageHistory,
+        PermissionFlagsBits.AttachFiles,
+        PermissionFlagsBits.EmbedLinks,
+        PermissionFlagsBits.UseExternalEmojis,
+      ],
+    },
+    {
+      id: config.roles.staff,
+      allow: [
+        PermissionFlagsBits.ViewChannel,
+        PermissionFlagsBits.SendMessages,
+        PermissionFlagsBits.ReadMessageHistory,
+        PermissionFlagsBits.AttachFiles,
+        PermissionFlagsBits.EmbedLinks,
+        PermissionFlagsBits.ManageMessages,
+      ],
+    },
+    {
+      id: config.roles.ticketSupport,
+      allow: [
+        PermissionFlagsBits.ViewChannel,
+        PermissionFlagsBits.SendMessages,
+        PermissionFlagsBits.ReadMessageHistory,
+        PermissionFlagsBits.AttachFiles,
+        PermissionFlagsBits.EmbedLinks,
+        PermissionFlagsBits.ManageMessages,
+      ],
+    },
+  ];
+}
+
+function staffReportPermissions(interaction) {
+  return [
+    {
+      id: interaction.guild.roles.everyone.id,
+      deny: [PermissionFlagsBits.ViewChannel],
+    },
+    {
+      id: interaction.user.id,
+      allow: [
+        PermissionFlagsBits.ViewChannel,
+        PermissionFlagsBits.SendMessages,
+        PermissionFlagsBits.ReadMessageHistory,
+        PermissionFlagsBits.AttachFiles,
+        PermissionFlagsBits.EmbedLinks,
+        PermissionFlagsBits.UseExternalEmojis,
+      ],
+    },
+    {
+      id: config.roles.owner,
+      allow: [
+        PermissionFlagsBits.ViewChannel,
+        PermissionFlagsBits.SendMessages,
+        PermissionFlagsBits.ReadMessageHistory,
+        PermissionFlagsBits.AttachFiles,
+        PermissionFlagsBits.EmbedLinks,
+        PermissionFlagsBits.ManageMessages,
+      ],
+    },
+    {
+      id: config.roles.administrator,
+      allow: [
+        PermissionFlagsBits.ViewChannel,
+        PermissionFlagsBits.SendMessages,
+        PermissionFlagsBits.ReadMessageHistory,
+        PermissionFlagsBits.AttachFiles,
+        PermissionFlagsBits.EmbedLinks,
+        PermissionFlagsBits.ManageMessages,
+      ],
+    },
+  ];
+}
+
+async function createForumTicket(interaction, client, type, title) {
+  const isStaffReport = type === 'Report Staff';
+
+  const channel = await interaction.guild.channels.create({
+    name: makeTicketChannelName(type, interaction.user),
+    type: ChannelType.GuildText,
+    parent: getTicketParentId(interaction),
+    permissionOverwrites: isStaffReport
+      ? staffReportPermissions(interaction)
+      : normalTicketPermissions(interaction),
+    topic: `Ticket Owner: ${interaction.user.id} | Type: ${type}`,
+  });
 
   const embed = new EmbedBuilder()
     .setTitle(title)
     .setColor(config.colors.red)
-    .setDescription('Staff will get to this when they can. Explain everything clearly and include proof if needed.')
+    .setDescription('Explain what you need clearly. Add proof, screenshots, links, or details if needed.')
     .addFields(
       { name: 'Opened By', value: `${interaction.user}`, inline: true },
       { name: 'User ID', value: interaction.user.id, inline: true },
       { name: 'Type', value: type, inline: true }
     )
+    .setFooter({ text: 'Cruel Violations Customs' })
     .setTimestamp();
 
-  const thread = await forum.threads.create({
-    name: `${type} - ${interaction.user.username}`.slice(0, 90),
-    message: {
-      content: `<@&${config.roles.staff}> <@&${config.roles.ticketSupport}> ${interaction.user}`,
-      embeds: [embed],
-      components: [staffButtons()],
-    },
+  await channel.send({
+    content: isStaffReport
+      ? `<@&${config.roles.owner}> <@&${config.roles.administrator}> ${interaction.user}`
+      : `<@&${config.roles.staff}> <@&${config.roles.ticketSupport}> ${interaction.user}`,
+    embeds: [embed],
+    components: [staffButtons()],
   });
 
-  ticketOwners.set(thread.id, interaction.user.id);
-  ticketTypesByThread.set(thread.id, type);
+  ticketOwners.set(channel.id, interaction.user.id);
+  ticketTypesByThread.set(channel.id, type);
 
   await logInfo(client, 'Ticket Created', `${interaction.user.tag} opened **${type}**.`, [
-    { name: 'Thread', value: `${thread}`, inline: true },
+    { name: 'Channel', value: `${channel}`, inline: true },
   ]);
 
   return interaction.reply({
-    content: `Your ticket was created: ${thread}`,
+    content: `Your ticket was created: ${channel}`,
     ephemeral: true,
   });
 }
@@ -231,7 +593,7 @@ async function startApplication(interaction, client, type) {
 
   const existing = db.prepare(`
     SELECT * FROM applications
-    WHERE user_id = ? AND status IN ('awaiting_dm', 'submitted', 'accepted_interview')
+    WHERE user_id = ? AND status IN ('in_dm', 'submitted', 'accepted_interview')
   `).get(interaction.user.id);
 
   if (existing) {
@@ -241,54 +603,33 @@ async function startApplication(interaction, client, type) {
     });
   }
 
-  const forum = await interaction.guild.channels.fetch(config.channels.reportsForum).catch(() => null);
-
-  if (!forum || forum.type !== ChannelType.GuildForum) {
-    return interaction.reply({
-      content: 'Applications forum was not found.',
-      ephemeral: true,
-    });
-  }
-
-  const thread = await forum.threads.create({
-    name: `${meta.label} App - ${interaction.user.username}`.slice(0, 90),
-    message: {
-      content: `<@&${config.roles.staff}>`,
-      embeds: [
-        new EmbedBuilder()
-          .setTitle(meta.title)
-          .setColor(config.colors.red)
-          .setDescription('Application started. Waiting for the applicant to answer the DM questions.')
-          .addFields(
-            { name: 'Applicant', value: `${interaction.user}`, inline: true },
-            { name: 'User ID', value: interaction.user.id, inline: true },
-            { name: 'Position', value: meta.label, inline: true },
-            { name: 'Status', value: 'Waiting for DM answers.' }
-          )
-          .setTimestamp(),
-      ],
-      components: [staffButtons()],
-    },
-  });
-
   db.prepare(`
     INSERT OR REPLACE INTO applications
-    (user_id, guild_id, thread_id, type, status, created_at)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).run(interaction.user.id, interaction.guild.id, thread.id, type, 'awaiting_dm', Date.now());
+    (user_id, guild_id, thread_id, type, status, current_question, answers, strikes, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    interaction.user.id,
+    interaction.guild.id,
+    null,
+    type,
+    'in_dm',
+    0,
+    '[]',
+    0,
+    Date.now()
+  );
 
-  ticketOwners.set(thread.id, interaction.user.id);
-  ticketTypesByThread.set(thread.id, `Application:${type}`);
+  const firstQuestion = meta.questions[0];
 
   const dmEmbed = new EmbedBuilder()
     .setTitle(meta.title)
     .setColor(config.colors.red)
     .setDescription(
-      `Reply to this DM with your application answers in **one message**.\n\nCopy the questions below and answer under each one.`
+      `Answer each question one at a time. Don’t rush it.\n\nLow effort, fake, or troll answers will get auto denied.`
     )
     .addFields(
-      { name: 'Questions', value: meta.questions.slice(0, 1024) },
-      { name: 'Important', value: 'Do not send troll answers. Staff will review it when they can.' }
+      { name: `Question 1/${meta.questions.length}`, value: firstQuestion.text },
+      { name: 'How to answer', value: 'Reply to this DM with your answer.' }
     )
     .setFooter({ text: 'Cruel Violations Customs Applications' })
     .setTimestamp();
@@ -297,7 +638,6 @@ async function startApplication(interaction, client, type) {
 
   if (!dmSent) {
     db.prepare('DELETE FROM applications WHERE user_id = ?').run(interaction.user.id);
-    await thread.setArchived(true).catch(() => {});
 
     return interaction.reply({
       content: 'I could not DM you. Turn on DMs from server members and try again.',
@@ -311,45 +651,172 @@ async function startApplication(interaction, client, type) {
   });
 }
 
+async function denyApplicationInDM(message, app, reason) {
+  const meta = getApplicationMeta(app.type);
+
+  db.prepare(`
+    UPDATE applications
+    SET status = 'auto_denied'
+    WHERE user_id = ?
+  `).run(message.author.id);
+
+  const embed = new EmbedBuilder()
+    .setTitle('Application Auto Denied')
+    .setColor(config.colors.red)
+    .setDescription(
+      `Your **${meta.label}** application was denied because your answer didn’t look serious enough.`
+    )
+    .addFields(
+      { name: 'Reason', value: reason },
+      { name: 'What now?', value: 'You can reapply, but only if you are actually willing to put effort into the answers.' }
+    )
+    .setFooter({ text: 'Cruel Violations Customs Applications' })
+    .setTimestamp();
+
+  await message.reply({ embeds: [embed] }).catch(() => {});
+}
+
+async function submitApplicationToStaff(message, client, app, answers) {
+  const meta = getApplicationMeta(app.type);
+  const guild = await client.guilds.fetch(app.guild_id).catch(() => null);
+
+  if (!guild) {
+    await message.reply('Something went wrong submitting your application. Staff could not be reached.').catch(() => {});
+    return;
+  }
+
+  const forum = await guild.channels.fetch(config.channels.reportsForum).catch(() => null);
+
+  if (!forum || forum.type !== ChannelType.GuildForum) {
+    await message.reply('Something went wrong submitting your application. The staff forum was not found.').catch(() => {});
+    return;
+  }
+
+  const fields = [
+    { name: 'Applicant', value: `${message.author}`, inline: true },
+    { name: 'User ID', value: message.author.id, inline: true },
+    { name: 'Position', value: meta.label, inline: true },
+  ];
+
+  for (const item of answers) {
+    fields.push({
+      name: item.question.slice(0, 256),
+      value: item.answer.slice(0, 1024),
+    });
+  }
+
+  const embed = new EmbedBuilder()
+    .setTitle(meta.title)
+    .setColor(config.colors.red)
+    .setDescription('New completed staff application.')
+    .addFields(fields.slice(0, 25))
+    .setTimestamp();
+
+  const thread = await forum.threads.create({
+    name: `${meta.label} App - ${message.author.username}`.slice(0, 90),
+    message: {
+      content: `<@&${config.roles.staff}>`,
+      embeds: [embed],
+      components: [staffButtons()],
+    },
+  });
+
+  ticketOwners.set(thread.id, message.author.id);
+  ticketTypesByThread.set(thread.id, `Application:${app.type}`);
+
+  db.prepare(`
+    UPDATE applications
+    SET status = 'submitted', thread_id = ?
+    WHERE user_id = ?
+  `).run(thread.id, message.author.id);
+
+  await logInfo(client, 'Staff Application Submitted', `${message.author.tag} submitted a **${meta.label}** application.`, [
+    { name: 'Thread', value: `${thread}`, inline: true },
+  ]);
+
+  const doneEmbed = new EmbedBuilder()
+    .setTitle('Application Submitted')
+    .setColor(config.colors.green)
+    .setDescription('Your application was sent to staff. They will review it when they can.')
+    .addFields(
+      { name: 'Position', value: meta.label },
+      { name: 'Note', value: 'Do not spam staff asking them to review it.' }
+    )
+    .setFooter({ text: 'Cruel Violations Customs Applications' })
+    .setTimestamp();
+
+  await message.reply({ embeds: [doneEmbed] }).catch(() => {});
+}
+
 async function handleApplicationDM(message, client) {
   const app = db.prepare(`
     SELECT * FROM applications
-    WHERE user_id = ? AND status = 'awaiting_dm'
+    WHERE user_id = ? AND status = 'in_dm'
   `).get(message.author.id);
 
   if (!app) return;
 
-  const guild = await client.guilds.fetch(app.guild_id).catch(() => null);
-  if (!guild) return;
-
-  const thread = await guild.channels.fetch(app.thread_id).catch(() => null);
-  if (!thread) return;
-
   const meta = getApplicationMeta(app.type);
 
-  const embed = new EmbedBuilder()
-    .setTitle(`${meta.label} Application Answers`)
-    .setColor(config.colors.red)
-    .addFields(
-      { name: 'Applicant', value: `${message.author}`, inline: true },
-      { name: 'User ID', value: message.author.id, inline: true },
-      { name: 'Position', value: meta.label, inline: true },
-      { name: 'Answers', value: message.content.slice(0, 3900) || 'No text provided.' }
-    )
-    .setTimestamp();
+  if (!meta) return;
 
-  await thread.send({
-    content: `<@&${config.roles.staff}> Application answers received.`,
-    embeds: [embed],
-  }).catch(() => {});
+  const currentQuestion = app.current_question || 0;
+  const question = meta.questions[currentQuestion];
+
+  if (!question) return;
+
+  const answer = message.content?.trim();
+
+  if (!answer) {
+    await denyApplicationInDM(message, app, 'You did not send a real answer.');
+    return;
+  }
+
+  const check = isLowEffortAnswer(answer, question, meta);
+
+  if (check.bad) {
+    await denyApplicationInDM(message, app, check.reason);
+    return;
+  }
+
+  const answers = parseAnswers(app.answers);
+
+  answers.push({
+    question: question.text,
+    answer,
+  });
+
+  const nextQuestionIndex = currentQuestion + 1;
+
+  if (nextQuestionIndex >= meta.questions.length) {
+    db.prepare(`
+      UPDATE applications
+      SET answers = ?, current_question = ?
+      WHERE user_id = ?
+    `).run(JSON.stringify(answers), nextQuestionIndex, message.author.id);
+
+    await submitApplicationToStaff(message, client, app, answers);
+    return;
+  }
 
   db.prepare(`
     UPDATE applications
-    SET status = 'submitted'
+    SET answers = ?, current_question = ?
     WHERE user_id = ?
-  `).run(message.author.id);
+  `).run(JSON.stringify(answers), nextQuestionIndex, message.author.id);
 
-  await message.reply('Your application was submitted. Staff will review it soon.').catch(() => {});
+  const nextQuestion = meta.questions[nextQuestionIndex];
+
+  const embed = new EmbedBuilder()
+    .setTitle(meta.title)
+    .setColor(config.colors.red)
+    .addFields(
+      { name: `Question ${nextQuestionIndex + 1}/${meta.questions.length}`, value: nextQuestion.text }
+    )
+    .setFooter({ text: 'Answer this question in your next message.' })
+    .setTimestamp();
+
+  await message.reply({ embeds: [embed] }).catch(() => {});
 }
 
 async function handleAcceptedApplication(interaction, client, ownerId, appType) {
@@ -592,12 +1059,24 @@ async function handleTicketModal(interaction, client) {
 
     await interaction.reply(`Closed by ${interaction.user}.\nReason: ${reason}`);
 
-    if (interaction.channel?.setLocked) {
-      await interaction.channel.setLocked(true).catch(() => {});
-    }
+    if (interaction.channel?.isThread?.()) {
+      if (interaction.channel.setLocked) {
+        await interaction.channel.setLocked(true).catch(() => {});
+      }
 
-    if (interaction.channel?.setArchived) {
-      await interaction.channel.setArchived(true).catch(() => {});
+      if (interaction.channel.setArchived) {
+        await interaction.channel.setArchived(true).catch(() => {});
+      }
+    } else {
+      if (ownerId) {
+        await interaction.channel.permissionOverwrites.edit(ownerId, {
+          SendMessages: false,
+          AttachFiles: false,
+          EmbedLinks: false,
+        }).catch(() => {});
+      }
+
+      await interaction.channel.setName(`closed-${interaction.channel.name}`.slice(0, 90)).catch(() => {});
     }
   }
 

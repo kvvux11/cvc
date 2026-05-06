@@ -71,6 +71,10 @@ async function announceLevelUp(guild, member, level, source = 'Chat') {
   const channel = await guild.channels.fetch(config.channels.levels).catch(() => null);
   if (!channel) return;
 
+  const imageUrl =
+    config.images?.levelUp ||
+    'https://imgs.search.brave.com/m2-dvxML07DkQOeXI-Wmne_E5_FYqU4rzwvWQaJzsas/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9pLnBp/bmltZy5jb20vb3Jp/Z2luYWxzL2QzLzQxLzk0L2QzNDE5NGIwNzIwYjBmYWY0YTU2MTkyOWFmY2JjZGYwLmpwZw';
+
   const embed = new EmbedBuilder()
     .setTitle('Level Up')
     .setColor(config.colors.red)
@@ -79,13 +83,17 @@ async function announceLevelUp(guild, member, level, source = 'Chat') {
       { name: 'Source', value: source, inline: true },
       { name: 'Member', value: `${member.user.tag}`, inline: true }
     )
-    .setImage(config.images.levelUp)
+    .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 256 }))
+    .setImage(imageUrl)
     .setFooter({ text: 'Cruel Violations Customs' })
     .setTimestamp();
 
   await channel.send({
     content: `${member}`,
     embeds: [embed],
+    allowedMentions: {
+      users: [member.id],
+    },
   }).catch(console.error);
 }
 
@@ -110,7 +118,7 @@ async function awardXp(guild, member, amount, source = 'Chat') {
   }
 }
 
-async function setUserLevel(guild, member, level, source = 'Staff Update') {
+async function setUserLevel(guild, member, level, source = 'Staff Level Update') {
   const newLevel = Math.max(0, level);
   const newXp = xpForLevel(newLevel);
 
@@ -168,6 +176,7 @@ async function runVoiceXpSweep(client) {
     if (voice.channelId === guild.afkChannelId) return false;
 
     const realUsersInChannel = voice.channel.members.filter(m => !m.user.bot).size;
+
     return realUsersInChannel >= 2;
   });
 
