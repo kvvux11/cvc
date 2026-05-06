@@ -14,6 +14,7 @@ const { canUseTicketTools } = require('./permissions');
 const { logInfo } = require('./logger');
 
 const ticketOwners = new Map();
+const ticketTypesByThread = new Map();
 
 function ticketPanelEmbed() {
   return new EmbedBuilder()
@@ -46,22 +47,22 @@ function applicationPanelEmbed() {
   return new EmbedBuilder()
     .setTitle('Staff Applications')
     .setColor(config.colors.red)
-    .setDescription('If you want to help the server, apply below.\nOnly apply if you are actually serious.')
+    .setDescription('Apply below if you actually want to help the server. Don’t troll apps.')
     .addFields(
       {
         name: 'Moderator Requirements',
-        value: '• 16+\n• decent mic\n• active in the server\n• Level 5+\n• can stay calm and not make things worse'
+        value: '• 16+\n• decent mic\n• active in the server\n• Level 5+\n• can stay calm and not make things worse',
       },
       {
         name: 'Administrator Requirements',
-        value: '• 17+\n• working mic\n• Level 10+\n• trusted\n• active often\n• knows how to handle people properly'
+        value: '• 17+\n• working mic\n• Level 10+\n• trusted\n• active often\n• knows how to handle people properly',
       },
       {
         name: 'Ticket Support Requirements',
-        value: '• 15+\n• can help in tickets\n• patient\n• decent grammar\n• active enough to be useful'
+        value: '• 15+\n• can help in tickets\n• patient\n• decent grammar\n• active enough to be useful',
       }
     )
-    .setFooter({ text: 'Don’t troll the applications.' });
+    .setFooter({ text: 'Accept = accepted for interview, not instantly hired.' });
 }
 
 function ticketButtons() {
@@ -103,14 +104,17 @@ function getApplicationMeta(type) {
     mod: {
       title: 'Moderator Application',
       label: 'Moderator',
+      interviewRole: config.roles.awaitingModInterview,
     },
     admin: {
       title: 'Administrator Application',
       label: 'Administrator',
+      interviewRole: config.roles.awaitingAdminInterview,
     },
     support: {
       title: 'Ticket Support Application',
       label: 'Ticket Support',
+      interviewRole: config.roles.awaitingSupportInterview,
     },
   };
 
@@ -209,6 +213,7 @@ async function createForumTicket(interaction, client, type, title) {
   });
 
   ticketOwners.set(thread.id, interaction.user.id);
+  ticketTypesByThread.set(thread.id, type);
 
   await logInfo(client, 'Ticket Created', `${interaction.user.tag} opened **${type}**.`, [
     { name: 'Thread', value: `${thread}`, inline: true },
@@ -262,6 +267,7 @@ async function createApplicationPost(interaction, client, type) {
   });
 
   ticketOwners.set(thread.id, interaction.user.id);
+  ticketTypesByThread.set(thread.id, `Application:${type}`);
 
   await logInfo(client, 'Staff Application Created', `${interaction.user.tag} submitted a **${meta.label}** application.`, [
     { name: 'Thread', value: `${thread}`, inline: true },
@@ -271,6 +277,61 @@ async function createApplicationPost(interaction, client, type) {
     content: `Your application was sent: ${thread}`,
     ephemeral: true,
   });
+}
+
+async function handleAcceptedApplication(interaction, client, ownerId, appType) {
+  const type = appType.replace('Application:', '');
+  const meta = getApplicationMeta(type);
+
+  if (!meta) {
+    return false;
+  }
+
+  const member = await interaction.guild.members.fetch(ownerId).catch(() => null);
+
+  if (member && meta.interviewRole) {
+    await member.roles.add(meta.interviewRole).catch(() => {});
+  }
+
+  const acceptedChannel = await interaction.guild.channels
+    .fetch(config.channels.acceptedApplications)
+    .catch(() => null);
+
+  const embed = new EmbedBuilder()
+    .setTitle('Application Accepted For Interview')
+    .setColor(config.colors.green)
+    .addFields(
+      { name: 'Applicant', value: `<@${ownerId}>`, inline: true },
+      { name: 'Position', value: meta.label, inline: true },
+      { name: 'Accepted By', value: `${interaction.user}`, inline: true },
+      { name: 'Application Thread', value: `${interaction.channel}` },
+      { name: 'Status', value: 'Waiting for interview / final decision.' }
+    )
+    .setFooter({ text: 'Accept does not mean fully hired yet.' })
+    .setTimestamp();
+
+  if (acceptedChannel) {
+    await acceptedChannel.send({
+      content: `<@${ownerId}>`,
+      embeds: [embed],
+    }).catch(() => {});
+  }
+
+  const dmEmbed = new EmbedBuilder()
+    .setTitle('Application Accepted For Interview')
+    .setColor(config.colors.green)
+    .setDescription(
+      `Your **${meta.label}** application was accepted for an interview.\n\nThis does **not** mean you have the role yet. Staff will contact you soon with the next steps.`
+    )
+    .addFields(
+      { name: 'Accepted By', value: `${interaction.user.tag}` },
+      { name: 'Next Step', value: 'Wait for staff to setup your interview.' }
+    )
+    .setTimestamp();
+
+  await dmUser(client, ownerId, dmEmbed);
+
+  return true;
 }
 
 async function handleTicketButton(interaction, client) {
@@ -318,12 +379,18 @@ async function handleTicketButton(interaction, client) {
 
   if (id === 'ticket_accept') {
     const ownerId = ticketOwners.get(interaction.channel.id);
+    const threadType = ticketTypesByThread.get(interaction.channel.id);
+
+    if (ownerId && threadType?.startsWith('Application:')) {
+      await handleAcceptedApplication(interaction, client, ownerId, threadType);
+      return interaction.reply(`Accepted for interview by ${interaction.user}.`);
+    }
 
     if (ownerId) {
       const dmEmbed = new EmbedBuilder()
         .setTitle('Ticket Accepted')
         .setColor(config.colors.green)
-        .setDescription('Your ticket/application was accepted and is being handled.')
+        .setDescription('Your ticket was accepted and is being handled.')
         .addFields({ name: 'Handled By', value: `${interaction.user.tag}` })
         .setTimestamp();
 
