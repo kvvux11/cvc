@@ -16,7 +16,7 @@ module.exports = {
           type: ActivityType.Watching,
         },
       ],
-      status: 'dnd',
+      status: 'Do Not Disturb',
     });
 
     await updateCounters(client);
