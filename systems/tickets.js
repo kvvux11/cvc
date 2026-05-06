@@ -53,14 +53,30 @@ function ticketPanelEmbed() {
   return new EmbedBuilder()
     .setTitle('Open A Ticket')
     .setColor(config.colors.red)
-    .setDescription('Pick what you need help with below.')
+    .setDescription('Need help or want to buy a server perk? Pick the option that fits best below.')
     .addFields(
-      { name: 'General Support', value: 'Basic help, server help, random questions.' },
-      { name: 'Car Help', value: 'Cars, drops, meets, requests, all that.' },
-      { name: 'VIP Help', value: 'VIP stuff, access issues, priority help.' },
-      { name: 'Other', value: 'If it doesnt fit the others, use this one.' }
+      {
+        name: 'General Support',
+        value: 'Questions, server help, role help, or anything basic.',
+      },
+      {
+        name: 'Car Help',
+        value: 'Help with car drops, car meets, requests, platforms, or getting cars.',
+      },
+      {
+        name: 'VIP Purchase',
+        value: 'Buy VIP for extra channels, VIP drops, early access, and priority perks. Current price: **$5 one-time**.',
+      },
+      {
+        name: 'Priority Access Purchase',
+        value: 'Buy Priority Access for first looks at certain drops, faster requests, and limited access perks. Current price: **$3 one-time**.',
+      },
+      {
+        name: 'Other',
+        value: 'Anything that does not fit the other options.',
+      }
     )
-    .setFooter({ text: 'Cruel Violations Customs' });
+    .setFooter({ text: 'Payments are handled through tickets only. Do not pay random members.' });
 }
 
 function reportPanelEmbed() {
@@ -99,12 +115,36 @@ function applicationPanelEmbed() {
 }
 
 function ticketButtons() {
-  return new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('ticket_general').setLabel('General Support').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('ticket_car').setLabel('Car Help').setStyle(ButtonStyle.Primary),
-    new ButtonBuilder().setCustomId('ticket_vip').setLabel('VIP Help').setStyle(ButtonStyle.Success),
-    new ButtonBuilder().setCustomId('ticket_other').setLabel('Other').setStyle(ButtonStyle.Secondary)
+  const rowOne = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('ticket_general')
+      .setLabel('General Support')
+      .setStyle(ButtonStyle.Secondary),
+
+    new ButtonBuilder()
+      .setCustomId('ticket_car')
+      .setLabel('Car Help')
+      .setStyle(ButtonStyle.Primary),
+
+    new ButtonBuilder()
+      .setCustomId('ticket_vip_purchase')
+      .setLabel('Buy VIP')
+      .setStyle(ButtonStyle.Success)
   );
+
+  const rowTwo = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('ticket_priority_purchase')
+      .setLabel('Buy Priority Access')
+      .setStyle(ButtonStyle.Success),
+
+    new ButtonBuilder()
+      .setCustomId('ticket_other')
+      .setLabel('Other')
+      .setStyle(ButtonStyle.Secondary)
+  );
+
+  return [rowOne, rowTwo];
 }
 
 function reportButtons() {
@@ -141,37 +181,12 @@ function getApplicationMeta(type) {
       requiredLevel: 0,
       minAge: 15,
       questions: [
-        {
-          key: 'age',
-          text: 'How old are you?',
-          minLength: 1,
-          type: 'age',
-        },
-        {
-          key: 'timezone',
-          text: 'What timezone are you in, and when are you usually active?',
-          minLength: 8,
-        },
-        {
-          key: 'activity',
-          text: 'How active can you actually be in the server?',
-          minLength: 15,
-        },
-        {
-          key: 'why',
-          text: 'Why do you want Ticket Support?',
-          minLength: 25,
-        },
-        {
-          key: 'support_scenario',
-          text: 'Someone opens a ticket saying they need help finding a car. What would you say/do?',
-          minLength: 35,
-        },
-        {
-          key: 'experience',
-          text: 'Do you have any past staff/support experience? If not, say what makes you useful anyway.',
-          minLength: 25,
-        },
+        { key: 'age', text: 'How old are you?', minLength: 1, type: 'age' },
+        { key: 'timezone', text: 'What timezone are you in, and when are you usually active?', minLength: 8 },
+        { key: 'activity', text: 'How active can you actually be in the server?', minLength: 15 },
+        { key: 'why', text: 'Why do you want Ticket Support?', minLength: 25 },
+        { key: 'support_scenario', text: 'Someone opens a ticket saying they need help finding a car. What would you say/do?', minLength: 35 },
+        { key: 'experience', text: 'Do you have any past staff/support experience? If not, say what makes you useful anyway.', minLength: 25 },
       ],
     },
 
@@ -182,43 +197,13 @@ function getApplicationMeta(type) {
       requiredLevel: 5,
       minAge: 16,
       questions: [
-        {
-          key: 'age',
-          text: 'How old are you?',
-          minLength: 1,
-          type: 'age',
-        },
-        {
-          key: 'timezone',
-          text: 'What timezone are you in, and when are you usually active?',
-          minLength: 8,
-        },
-        {
-          key: 'mic',
-          text: 'Do you have a working mic?',
-          minLength: 2,
-          type: 'mic',
-        },
-        {
-          key: 'why',
-          text: 'Why do you want Moderator?',
-          minLength: 30,
-        },
-        {
-          key: 'argument',
-          text: 'Two members start arguing and insulting each other in chat. What do you do?',
-          minLength: 40,
-        },
-        {
-          key: 'friend_rulebreak',
-          text: 'Your friend breaks a rule and expects you to ignore it. What do you do?',
-          minLength: 35,
-        },
-        {
-          key: 'experience',
-          text: 'Any past staff experience? If yes, where? If no, why should we still consider you?',
-          minLength: 25,
-        },
+        { key: 'age', text: 'How old are you?', minLength: 1, type: 'age' },
+        { key: 'timezone', text: 'What timezone are you in, and when are you usually active?', minLength: 8 },
+        { key: 'mic', text: 'Do you have a working mic?', minLength: 2, type: 'mic' },
+        { key: 'why', text: 'Why do you want Moderator?', minLength: 30 },
+        { key: 'argument', text: 'Two members start arguing and insulting each other in chat. What do you do?', minLength: 40 },
+        { key: 'friend_rulebreak', text: 'Your friend breaks a rule and expects you to ignore it. What do you do?', minLength: 35 },
+        { key: 'experience', text: 'Any past staff experience? If yes, where? If no, why should we still consider you?', minLength: 25 },
       ],
     },
 
@@ -229,48 +214,14 @@ function getApplicationMeta(type) {
       requiredLevel: 10,
       minAge: 17,
       questions: [
-        {
-          key: 'age',
-          text: 'How old are you?',
-          minLength: 1,
-          type: 'age',
-        },
-        {
-          key: 'timezone',
-          text: 'What timezone are you in, and when are you usually active?',
-          minLength: 8,
-        },
-        {
-          key: 'mic',
-          text: 'Do you have a working mic?',
-          minLength: 2,
-          type: 'mic',
-        },
-        {
-          key: 'why',
-          text: 'Why do you want Administrator?',
-          minLength: 40,
-        },
-        {
-          key: 'experience',
-          text: 'Have you staffed before? Explain where and what you did.',
-          minLength: 30,
-        },
-        {
-          key: 'ban_situation',
-          text: 'When would you ban someone instead of timing them out?',
-          minLength: 40,
-        },
-        {
-          key: 'staff_abuse',
-          text: 'How would you handle another staff member abusing power?',
-          minLength: 45,
-        },
-        {
-          key: 'trust',
-          text: 'Why should we trust you with admin perms and private staff info?',
-          minLength: 45,
-        },
+        { key: 'age', text: 'How old are you?', minLength: 1, type: 'age' },
+        { key: 'timezone', text: 'What timezone are you in, and when are you usually active?', minLength: 8 },
+        { key: 'mic', text: 'Do you have a working mic?', minLength: 2, type: 'mic' },
+        { key: 'why', text: 'Why do you want Administrator?', minLength: 40 },
+        { key: 'experience', text: 'Have you staffed before? Explain where and what you did.', minLength: 30 },
+        { key: 'ban_situation', text: 'When would you ban someone instead of timing them out?', minLength: 40 },
+        { key: 'staff_abuse', text: 'How would you handle another staff member abusing power?', minLength: 45 },
+        { key: 'trust', text: 'Why should we trust you with admin perms and private staff info?', minLength: 45 },
       ],
     },
   };
@@ -356,17 +307,11 @@ function isLowEffortAnswer(answer, question, meta) {
   ];
 
   if (badExact.includes(cleaned)) {
-    return {
-      bad: true,
-      reason: 'Your answer looked lazy/fake.',
-    };
+    return { bad: true, reason: 'Your answer looked lazy/fake.' };
   }
 
   if (/(.)\1{6,}/.test(cleaned)) {
-    return {
-      bad: true,
-      reason: 'Your answer looked like spam.',
-    };
+    return { bad: true, reason: 'Your answer looked like spam.' };
   }
 
   if (question.type === 'age') {
@@ -394,19 +339,13 @@ function isLowEffortAnswer(answer, question, meta) {
   }
 
   if (cleaned.length < question.minLength) {
-    return {
-      bad: true,
-      reason: 'Your answer was way too short.',
-    };
+    return { bad: true, reason: 'Your answer was way too short.' };
   }
 
   const wordCount = cleaned.split(' ').filter(Boolean).length;
 
   if (wordCount < 5 && question.minLength >= 25) {
-    return {
-      bad: true,
-      reason: 'Your answer did not explain enough.',
-    };
+    return { bad: true, reason: 'Your answer did not explain enough.' };
   }
 
   const vaguePhrases = [
@@ -534,6 +473,43 @@ function staffReportPermissions(interaction) {
   ];
 }
 
+function getTicketDescription(type) {
+  if (type === 'VIP Purchase') {
+    return [
+      'You opened a **VIP Purchase** ticket.',
+      '',
+      '**VIP Price:** $5 one-time',
+      '',
+      '**VIP Includes:**',
+      '• Access to VIP channels',
+      '• VIP car drops',
+      '• Priority requests',
+      '• Early access to certain drops/events',
+      '• Special VIP role',
+      '',
+      'Wait for the owner/staff to give payment instructions. Do not pay random members.',
+    ].join('\n');
+  }
+
+  if (type === 'Priority Access Purchase') {
+    return [
+      'You opened a **Priority Access Purchase** ticket.',
+      '',
+      '**Priority Access Price:** $3 one-time',
+      '',
+      '**Priority Access Includes:**',
+      '• First looks at certain drops',
+      '• Faster request handling',
+      '• Better chance at limited spots',
+      '• Priority Access role',
+      '',
+      'Wait for the owner/staff to give payment instructions. Do not pay random members.',
+    ].join('\n');
+  }
+
+  return 'Explain what you need clearly. Add proof, screenshots, links, or details if needed.';
+}
+
 async function createForumTicket(interaction, client, type, title) {
   const isStaffReport = type === 'Report Staff';
 
@@ -550,7 +526,7 @@ async function createForumTicket(interaction, client, type, title) {
   const embed = new EmbedBuilder()
     .setTitle(title)
     .setColor(config.colors.red)
-    .setDescription('Explain what you need clearly. Add proof, screenshots, links, or details if needed.')
+    .setDescription(getTicketDescription(type))
     .addFields(
       { name: 'Opened By', value: `${interaction.user}`, inline: true },
       { name: 'User ID', value: interaction.user.id, inline: true },
@@ -900,8 +876,10 @@ async function handleTicketButton(interaction, client) {
   const ticketTypes = {
     ticket_general: ['General Support', 'Support Ticket'],
     ticket_car: ['Car Help', 'Car Help Ticket'],
-    ticket_vip: ['VIP Help', 'VIP Ticket'],
+    ticket_vip_purchase: ['VIP Purchase', 'VIP Purchase Ticket'],
+    ticket_priority_purchase: ['Priority Access Purchase', 'Priority Access Purchase Ticket'],
     ticket_other: ['Other Help', 'Other Ticket'],
+
     report_member: ['Report Member', 'Member Report'],
     report_staff: ['Report Staff', 'Staff Report'],
     report_scam: ['Report Scam / Fake Listing', 'Scam Report'],
