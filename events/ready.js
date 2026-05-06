@@ -12,11 +12,11 @@ module.exports = {
     client.user.setPresence({
       activities: [
         {
-          name: 'Cruel Violations Customs',
+          name: 'im watching',
           type: ActivityType.Watching,
         },
       ],
-      status: 'online',
+      status: 'dnd',
     });
 
     await updateCounters(client);
