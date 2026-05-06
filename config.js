@@ -71,7 +71,7 @@ module.exports = {
 
   gifs: {
     welcome:
-      'https://imgs.search.brave.com/tZgFm46_y8TzBq-OblL8YoKv_NLkzbcmvCkv3SjFfyA/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9pLnBp/bmltZy5jb20vb3Jp/Z2luYWxzL2ZiLzMwLzBmL2ZiMzAwZjhiZWJmMmZmZDYxMDgwMjc5MjUyZTEzMDYzLmpwZw',
+      'https://tenor.com/view/grunge-fairycore-gif-23188446',
 
     boost:
       'https://imgs.search.brave.com/sdLYtJvUlrHt0F0BppZ_Xxk3W08-WkveRFlk8-neMrA/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9naWZk/Yi5jb20vaW1hZ2Vz/L2hpZ2gvZ3J1bmdl/LXNrdWxsLWdsaXRj/aC1kaWdpdGFsLWFy/dC1jcjFod2Vpencz/NHl3ejNwLmdpZg.gif',
@@ -79,7 +79,7 @@ module.exports = {
 
   images: {
     levelUp:
-      'https://imgs.search.brave.com/m2-dvxML07DkQOeXI-Wmne_E5_FYqU4rzwvWQaJzsas/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9pLnBp/bmltZy5jb20vb3Jp/Z2luYWxzL2QzLzQxLzk0L2QzNDE5NGIwNzIwYjBmYWY0YTU2MTkyOWFmY2JjZGYwLmpwZw',
+      'https://tenor.com/view/red-dark-dog-smile-gif-8422768659000591178',
   },
 
   colors: {
