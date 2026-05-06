@@ -1,16 +1,3 @@
-const express = require('express');
-
-const app = express();
-const PORT = process.env.PORT || 10000;
-
-app.get('/', (req, res) => {
-  res.send('Cruel Violations Customs bot is online.');
-});
-
-app.listen(PORT, () => {
-  console.log(`Web server running on port ${PORT}`);
-});
-
 const fs = require('node:fs');
 const path = require('node:path');
 const {
@@ -33,6 +20,9 @@ const client = new Client({
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMessageReactions,
     GatewayIntentBits.GuildModeration,
+
+    // needed for DM applications
+    GatewayIntentBits.DirectMessages,
   ],
   partials: [
     Partials.Message,
