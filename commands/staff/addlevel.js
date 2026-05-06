@@ -21,7 +21,7 @@ module.exports = {
 
   async execute(interaction) {
     if (!canUseMod(interaction.member)) {
-      return interaction.reply(deny('Only moderators or above can use this.'));
+      return interaction.reply(deny('Only moderators or above can edit levels.'));
     }
 
     const user = interaction.options.getUser('user');

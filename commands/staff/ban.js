@@ -1,13 +1,22 @@
 const { SlashCommandBuilder } = require('discord.js');
-const { canUseAdmin, deny } = require('../../systems/permissions');
+const { canUseAdmin, deny, adminCommandPermission } = require('../../systems/permissions');
 const { logModeration } = require('../../systems/logger');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('ban')
     .setDescription('Ban a member. Admin only.')
-    .addUserOption(o => o.setName('user').setDescription('User').setRequired(true))
-    .addStringOption(o => o.setName('reason').setDescription('Reason').setRequired(false)),
+    .setDefaultMemberPermissions(adminCommandPermission)
+    .addUserOption(o =>
+      o.setName('user')
+        .setDescription('User')
+        .setRequired(true)
+    )
+    .addStringOption(o =>
+      o.setName('reason')
+        .setDescription('Reason')
+        .setRequired(false)
+    ),
 
   async execute(interaction, client) {
     if (!canUseAdmin(interaction.member)) {
@@ -18,9 +27,21 @@ module.exports = {
     const member = await interaction.guild.members.fetch(user.id).catch(() => null);
     const reason = interaction.options.getString('reason') || 'No reason provided.';
 
-    if (!member) return interaction.reply({ content: 'Member not found.', ephemeral: true });
-    if (!member.bannable) return interaction.reply({ content: 'I cannot ban that member.', ephemeral: true });
+    if (!member) {
+      return interaction.reply({
+        content: 'Member not found.',
+        ephemeral: true,
+      });
+    }
 
+    if (!member.bannable) {
+      return interaction.reply({
+        content: 'I cannot ban that member.',
+        ephemeral: true,
+      });
+    }
+
+    await member.send(`You were banned from **${interaction.guild.name}**.\n**Reason:** ${reason}`).catch(() => {});
     await member.ban({ reason });
 
     await logModeration(client, 'Member Banned', [
@@ -29,6 +50,9 @@ module.exports = {
       { name: 'Reason', value: reason },
     ]);
 
-    await interaction.reply(`Banned **${user.tag}**.`);
+    await interaction.reply({
+      content: `Banned **${user.tag}**.`,
+      ephemeral: true,
+    });
   },
 };

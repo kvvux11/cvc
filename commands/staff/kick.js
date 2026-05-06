@@ -1,24 +1,47 @@
 const { SlashCommandBuilder } = require('discord.js');
-const { canUseMod, deny } = require('../../systems/permissions');
+const { canUseMod, deny, modCommandPermission } = require('../../systems/permissions');
 const { logModeration } = require('../../systems/logger');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('kick')
-    .setDescription('Kick a member.')
-    .addUserOption(o => o.setName('user').setDescription('User').setRequired(true))
-    .addStringOption(o => o.setName('reason').setDescription('Reason').setRequired(false)),
+    .setDescription('Kick a member. Moderator only.')
+    .setDefaultMemberPermissions(modCommandPermission)
+    .addUserOption(o =>
+      o.setName('user')
+        .setDescription('User')
+        .setRequired(true)
+    )
+    .addStringOption(o =>
+      o.setName('reason')
+        .setDescription('Reason')
+        .setRequired(false)
+    ),
 
   async execute(interaction, client) {
-    if (!canUseMod(interaction.member)) return interaction.reply(deny());
+    if (!canUseMod(interaction.member)) {
+      return interaction.reply(deny('Only moderators or above can kick.'));
+    }
 
     const user = interaction.options.getUser('user');
     const member = await interaction.guild.members.fetch(user.id).catch(() => null);
     const reason = interaction.options.getString('reason') || 'No reason provided.';
 
-    if (!member) return interaction.reply({ content: 'Member not found.', ephemeral: true });
-    if (!member.kickable) return interaction.reply({ content: 'I cannot kick that member.', ephemeral: true });
+    if (!member) {
+      return interaction.reply({
+        content: 'Member not found.',
+        ephemeral: true,
+      });
+    }
 
+    if (!member.kickable) {
+      return interaction.reply({
+        content: 'I cannot kick that member.',
+        ephemeral: true,
+      });
+    }
+
+    await member.send(`You were kicked from **${interaction.guild.name}**.\n**Reason:** ${reason}`).catch(() => {});
     await member.kick(reason);
 
     await logModeration(client, 'Member Kicked', [
@@ -27,6 +50,9 @@ module.exports = {
       { name: 'Reason', value: reason },
     ]);
 
-    await interaction.reply(`Kicked **${user.tag}**.`);
+    await interaction.reply({
+      content: `Kicked **${user.tag}**.`,
+      ephemeral: true,
+    });
   },
 };

@@ -3,8 +3,10 @@ const ms = require('ms');
 const config = require('../config');
 const {
   isStaff,
+  canUseOwner,
   canUseAdmin,
   canUseMod,
+  canUseTrialMod,
 } = require('./permissions');
 const {
   getProfile,
@@ -81,11 +83,11 @@ async function handlePrefixCommand(message, client) {
         '**Fun**',
         '`.coinflip` `.8ball` `.ratecar` `.violaterate` `.cleanordirty` `.garagevalue` `.wouldyourather` `.hotgarage`',
         '',
-        '**Staff / Ticket**',
-        '`.ticketpanel` `.reportpanel` `.applicationpanel`',
+        '**Owner Only**',
+        '`.ticketpanel` `.reportpanel` `.applicationpanel` `.say`',
         '',
-        '**Moderation**',
-        '`.kick` `.timeout` `.ban` `.clear` `.say` `.drop` `.listcar` `.addlevel` `.removelevel`',
+        '**Staff**',
+        '`.timeout` `.clear` `.kick` `.ban` `.drop` `.listcar` `.addlevel` `.removelevel`',
       ].join('\n')
     );
 
@@ -271,8 +273,8 @@ async function handlePrefixCommand(message, client) {
   }
 
   if (command === 'ticketpanel') {
-    if (!canUseAdmin(message.member)) {
-      await message.reply('Only admins can do that.');
+    if (!canUseOwner(message.member)) {
+      await message.reply('Only the owner can do that.');
       return true;
     }
 
@@ -293,8 +295,8 @@ async function handlePrefixCommand(message, client) {
   }
 
   if (command === 'reportpanel') {
-    if (!canUseAdmin(message.member)) {
-      await message.reply('Only admins can do that.');
+    if (!canUseOwner(message.member)) {
+      await message.reply('Only the owner can do that.');
       return true;
     }
 
@@ -315,8 +317,8 @@ async function handlePrefixCommand(message, client) {
   }
 
   if (command === 'applicationpanel' || command === 'apppanel' || command === 'staffapps') {
-    if (!canUseAdmin(message.member)) {
-      await message.reply('Only admins can do that.');
+    if (!canUseOwner(message.member)) {
+      await message.reply('Only the owner can do that.');
       return true;
     }
 
@@ -484,8 +486,8 @@ async function handlePrefixCommand(message, client) {
   }
 
   if (command === 'timeout') {
-    if (!canUseMod(message.member)) {
-      await message.reply('Only moderators or above can do that.');
+    if (!canUseTrialMod(message.member)) {
+      await message.reply('Only trial moderators or above can do that.');
       return true;
     }
 
@@ -525,8 +527,8 @@ async function handlePrefixCommand(message, client) {
   }
 
   if (command === 'clear') {
-    if (!canUseAdmin(message.member)) {
-      await message.reply('Only admins can do that.');
+    if (!canUseTrialMod(message.member)) {
+      await message.reply('Only trial moderators or above can do that.');
       return true;
     }
 
@@ -547,8 +549,8 @@ async function handlePrefixCommand(message, client) {
   }
 
   if (command === 'say') {
-    if (!canUseAdmin(message.member)) {
-      await message.reply('Only admins can do that.');
+    if (!canUseOwner(message.member)) {
+      await message.reply('Only the owner can do that.');
       return true;
     }
 

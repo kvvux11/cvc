@@ -1,19 +1,27 @@
 const { SlashCommandBuilder } = require('discord.js');
 const config = require('../../config');
-const { canUseAdmin, deny } = require('../../systems/permissions');
+const { canUseOwner, deny, ownerCommandPermission } = require('../../systems/permissions');
 const { reportPanelEmbed, reportButtons } = require('../../systems/tickets');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('reportpanel')
-    .setDescription('Post the report panel.'),
+    .setDescription('Post the report panel. Owner only.')
+    .setDefaultMemberPermissions(ownerCommandPermission),
 
   async execute(interaction) {
-    if (!canUseAdmin(interaction.member)) {
-      return interaction.reply(deny('Only admins can use this command.'));
+    if (!canUseOwner(interaction.member)) {
+      return interaction.reply(deny('Only the owner can use this command.'));
     }
 
-    const channel = await interaction.guild.channels.fetch(config.channels.reportUser);
+    const channel = await interaction.guild.channels.fetch(config.channels.reportUser).catch(() => null);
+
+    if (!channel) {
+      return interaction.reply({
+        content: 'Report-a-user channel not found.',
+        ephemeral: true,
+      });
+    }
 
     await channel.send({
       embeds: [reportPanelEmbed()],
