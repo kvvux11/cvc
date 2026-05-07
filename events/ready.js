@@ -24,20 +24,19 @@ module.exports = {
     await updateCounters(client).catch(console.error);
     await runVoiceXpSweep(client).catch(console.error);
 
+    startMediaPoster(client);
+
+    await postServerUpdate(client, [
+      'skid is online.',
+      'Updated /ritual systems.',
+      'Media posting is active.',
+      'Temporary voice channels are active.',
+      'Levels, tickets, logs, and commands are loaded.',
+    ]).catch(console.error);
+
     setInterval(async () => {
       await updateCounters(client).catch(console.error);
       await runVoiceXpSweep(client).catch(console.error);
     }, 5 * 60 * 1000);
-
-    startMediaPoster(client);
-
-    await postServerUpdate(client, [
-      'server moved into the /ritual style',
-      'levels now post in the new levels channel',
-      'tickets/applications are being cleaned up for the community style',
-      'auto media posting has been added for pfps, banners, cars, and animals',
-      'trial staff permissions are still limited',
-      'new prefix/community commands are active',
-    ]).catch(console.error);
   },
 };

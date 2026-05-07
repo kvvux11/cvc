@@ -1,149 +1,147 @@
 const fs = require('node:fs');
 const path = require('node:path');
-const { AttachmentBuilder, EmbedBuilder } = require('discord.js');
-const Database = require('better-sqlite3');
+const { AttachmentBuilder } = require('discord.js');
 const config = require('../config');
 
-const db = new Database('./database.sqlite');
+let started = false;
+let index = 0;
 
-db.prepare(`
-  CREATE TABLE IF NOT EXISTS media_seen (
-    url TEXT PRIMARY KEY,
-    category TEXT NOT NULL,
-    posted_at INTEGER NOT NULL
-  )
-`).run();
+const validExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.webp'];
 
-let categoryIndex = 0;
-
-function isValidImageUrl(url) {
-  if (!url) return false;
-  const clean = url.split('?')[0].toLowerCase();
-  return /\.(png|jpg|jpeg|gif|webp)$/.test(clean);
-}
-
-function getLocalFiles(folder) {
-  if (!folder || !fs.existsSync(folder)) return [];
-  return fs.readdirSync(folder)
-    .filter(file => /\.(png|jpe?g|gif|webp)$/i.test(file))
-    .map(file => path.join(folder, file));
-}
-
-function pickRandom(arr) {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-
-async function getRemoteImage(category) {
-  const subs = category.subreddits || [];
-  const shuffled = [...subs].sort(() => Math.random() - 0.5);
-
-  for (const sub of shuffled) {
-    try {
-      const url = `https://www.reddit.com/r/${encodeURIComponent(sub)}/hot.json?limit=75`;
-      const res = await fetch(url, {
-        headers: {
-          'User-Agent': 'skid-discord-bot/1.0',
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!res.ok) continue;
-      const data = await res.json();
-      const posts = data?.data?.children || [];
-
-      const candidates = posts
-        .map(p => p.data)
-        .filter(p => !p.over_18)
-        .map(p => p.url_overridden_by_dest || p.url)
-        .filter(isValidImageUrl)
-        .filter(u => !db.prepare('SELECT url FROM media_seen WHERE url = ?').get(u));
-
-      if (candidates.length) return pickRandom(candidates);
-    } catch (err) {
-      console.error(`[MEDIA] Failed fetching r/${sub}:`, err.message);
-    }
+function ensureFolder(folderPath) {
+  if (!fs.existsSync(folderPath)) {
+    fs.mkdirSync(folderPath, { recursive: true });
   }
-
-  return null;
 }
 
-async function attachmentFromUrl(url, categoryName) {
-  const res = await fetch(url, {
-    headers: { 'User-Agent': 'skid-discord-bot/1.0' },
+function getLocalFiles(folderPath) {
+  ensureFolder(folderPath);
+
+  return fs
+    .readdirSync(folderPath)
+    .filter(file => validExtensions.includes(path.extname(file).toLowerCase()))
+    .map(file => path.join(folderPath, file));
+}
+
+function getMediaTypes() {
+  return [
+    {
+      name: 'pfps',
+      label: 'pfp',
+      channelId: config.channels.pfps,
+      folder: config.mediaPoster.folders.pfps,
+      remote: config.mediaPoster.remote.pfps,
+    },
+    {
+      name: 'banners',
+      label: 'banner',
+      channelId: config.channels.banners,
+      folder: config.mediaPoster.folders.banners,
+      remote: config.mediaPoster.remote.banners,
+    },
+    {
+      name: 'animals',
+      label: 'animal',
+      channelId: config.channels.animals,
+      folder: config.mediaPoster.folders.animals,
+      remote: config.mediaPoster.remote.animals,
+    },
+    {
+      name: 'cars',
+      label: 'car',
+      channelId: config.channels.cars,
+      folder: config.mediaPoster.folders.cars,
+      remote: config.mediaPoster.remote.cars,
+    },
+  ];
+}
+
+async function sendLocalMedia(channel, type) {
+  const files = getLocalFiles(type.folder);
+
+  if (!files.length) return false;
+
+  const selected = files[Math.floor(Math.random() * files.length)];
+  const attachment = new AttachmentBuilder(selected);
+
+  await channel.send({
+    content: `⌁ ${type.label}`,
+    files: [attachment],
   });
 
-  if (!res.ok) throw new Error(`Bad media response ${res.status}`);
-
-  const arrayBuffer = await res.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-
-  if (buffer.length > 7_500_000) {
-    throw new Error('Image too large for safe upload.');
-  }
-
-  const ext = (url.split('?')[0].match(/\.(png|jpg|jpeg|gif|webp)$/i)?.[1] || 'png').toLowerCase();
-  return new AttachmentBuilder(buffer, { name: `${categoryName}-${Date.now()}.${ext}` });
+  return true;
 }
 
-async function postCategory(client, category) {
-  if (!category.channelId) return;
+async function sendRemoteMedia(channel, type) {
+  const urls = type.remote || [];
+  if (!urls.length) return false;
 
-  const channel = await client.channels.fetch(category.channelId).catch(() => null);
-  if (!channel) return;
+  const selected = urls[Math.floor(Math.random() * urls.length)];
 
-  const localFiles = getLocalFiles(category.folder);
-  let attachment = null;
-  let sourceUrl = null;
+  await channel.send({
+    content: `⌁ ${type.label}\n${selected}`,
+  });
 
-  if (localFiles.length) {
-    attachment = new AttachmentBuilder(pickRandom(localFiles));
-  } else {
-    sourceUrl = await getRemoteImage(category);
-    if (!sourceUrl) return;
-    attachment = await attachmentFromUrl(sourceUrl, category.name);
-  }
-
-  const embed = new EmbedBuilder()
-    .setTitle(category.title || 'Drop')
-    .setColor(config.colors.darkRed || config.colors.red)
-    .setDescription('Fresh pull.')
-    .setImage(`attachment://${attachment.name}`)
-    .setFooter({ text: '/ritual' })
-    .setTimestamp();
-
-  await channel.send({ embeds: [embed], files: [attachment] }).catch(console.error);
-
-  if (sourceUrl) {
-    db.prepare(`
-      INSERT OR IGNORE INTO media_seen (url, category, posted_at)
-      VALUES (?, ?, ?)
-    `).run(sourceUrl, category.name, Date.now());
-  }
+  return true;
 }
 
-async function postNextMedia(client) {
-  if (!config.mediaAuto?.enabled) return;
+async function postOne(client) {
+  const types = getMediaTypes().filter(type => type.channelId);
 
-  const categories = (config.mediaAuto.categories || []).filter(c => c.channelId);
-  if (!categories.length) return;
+  if (!types.length) {
+    console.log('[AUTO MEDIA] No media channel IDs found.');
+    return;
+  }
 
-  const category = categories[categoryIndex % categories.length];
-  categoryIndex++;
+  const type = types[index % types.length];
+  index++;
 
-  await postCategory(client, category);
+  const channel = await client.channels.fetch(type.channelId).catch(() => null);
+
+  if (!channel) {
+    console.log(`[AUTO MEDIA] Channel not found for ${type.name}: ${type.channelId}`);
+    return;
+  }
+
+  if (!channel.send) {
+    console.log(`[AUTO MEDIA] Channel is not sendable for ${type.name}`);
+    return;
+  }
+
+  try {
+    const sentLocal = await sendLocalMedia(channel, type);
+
+    if (!sentLocal) {
+      await sendRemoteMedia(channel, type);
+    }
+
+    console.log(`[AUTO MEDIA] Posted ${type.name}`);
+  } catch (error) {
+    console.error(`[AUTO MEDIA] Failed posting ${type.name}:`, error.message);
+  }
 }
 
 function startMediaPoster(client) {
-  if (!config.mediaAuto?.enabled) return;
+  if (started) return;
 
-  setTimeout(() => postNextMedia(client).catch(console.error), 15_000);
+  if (!config.mediaPoster?.enabled) {
+    console.log('[AUTO MEDIA] Disabled in config.');
+    return;
+  }
+
+  started = true;
+
+  console.log(`[AUTO MEDIA] Started. Posting every ${config.mediaPoster.intervalMs}ms.`);
+
+  setTimeout(() => {
+    postOne(client).catch(console.error);
+  }, 5000);
 
   setInterval(() => {
-    postNextMedia(client).catch(console.error);
-  }, config.mediaAuto.intervalMs || 600_000);
+    postOne(client).catch(console.error);
+  }, config.mediaPoster.intervalMs);
 }
 
 module.exports = {
   startMediaPoster,
-  postNextMedia,
 };
