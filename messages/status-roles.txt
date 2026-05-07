@@ -1,0 +1,51 @@
+# Special Roles
+
+Special roles are optional paid perks for members who want higher placement, private access, or custom features.
+
+## ⛧ Obsidian
+Highest special role.
+
+Includes:
+• private Obsidian chat
+• higher role placement
+• priority support
+• special role color
+• access to selected perks
+
+## ⟡ Ascendant
+Lower special role.
+
+Includes:
+• Ascendant chat
+• better role placement
+• priority support
+• selected perks
+
+## Custom Role
+Pick your own role name and color.
+
+Rules:
+• no staff names
+• no impersonation
+• no slurs
+• no dox/threat names
+• staff can deny anything that causes issues
+
+## Private Channel
+Your own channel inside the private category.
+
+You can:
+• change the channel name/topic
+• invite/remove people
+• send files and links
+• manage your own channel
+
+You cannot:
+• hide it from staff
+• post illegal content
+• dox/threaten/leak
+• abuse permissions
+
+## How to buy
+Open a ticket and select Special Roles.
+Only pay through the owner or approved Stripe link.

@@ -16,9 +16,7 @@ db.prepare(`
 `).run();
 
 function getUser(guildId, userId) {
-  let row = db
-    .prepare('SELECT * FROM levels WHERE guild_id = ? AND user_id = ?')
-    .get(guildId, userId);
+  let row = db.prepare('SELECT * FROM levels WHERE guild_id = ? AND user_id = ?').get(guildId, userId);
 
   if (!row) {
     db.prepare(`
@@ -26,9 +24,7 @@ function getUser(guildId, userId) {
       VALUES (?, ?, 0, 0, 0)
     `).run(guildId, userId);
 
-    row = db
-      .prepare('SELECT * FROM levels WHERE guild_id = ? AND user_id = ?')
-      .get(guildId, userId);
+    row = db.prepare('SELECT * FROM levels WHERE guild_id = ? AND user_id = ?').get(guildId, userId);
   }
 
   return row;
@@ -40,11 +36,7 @@ function xpForLevel(level) {
 
 function calculateLevel(xp) {
   let level = 0;
-
-  while (xp >= xpForLevel(level + 1)) {
-    level++;
-  }
-
+  while (xp >= xpForLevel(level + 1)) level++;
   return level;
 }
 
@@ -61,7 +53,7 @@ async function giveLevelRoles(member, level) {
   ];
 
   for (const reward of rewards) {
-    if (level >= reward.level && !member.roles.cache.has(reward.role)) {
+    if (reward.role && level >= reward.level && !member.roles.cache.has(reward.role)) {
       await member.roles.add(reward.role).catch(console.error);
     }
   }
@@ -69,31 +61,25 @@ async function giveLevelRoles(member, level) {
 
 async function announceLevelUp(guild, member, level, source = 'Chat') {
   const channel = await guild.channels.fetch(config.channels.levels).catch(() => null);
-  if (!channel) return;
-
-  const imageUrl =
-    config.images?.levelUp ||
-    'https://imgs.search.brave.com/m2-dvxML07DkQOeXI-Wmne_E5_FYqU4rzwvWQaJzsas/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9pLnBp/bmltZy5jb20vb3Jp/Z2luYWxzL2QzLzQxLzk0L2QzNDE5NGIwNzIwYjBmYWY0YTU2MTkyOWFmY2JjZGYwLmpwZw';
+  if (!channel || !member) return;
 
   const embed = new EmbedBuilder()
     .setTitle('Level Up')
     .setColor(config.colors.red)
-    .setDescription(`${member} just hit **Level ${level}**`)
+    .setDescription(`${member} reached **Level ${level}**`)
     .addFields(
       { name: 'Source', value: source, inline: true },
-      { name: 'Member', value: `${member.user.tag}`, inline: true }
+      { name: 'Member', value: member.user.tag, inline: true }
     )
     .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 256 }))
-    .setImage(imageUrl)
-    .setFooter({ text: 'Cruel Violations Customs' })
+    .setImage(config.images.levelUp)
+    .setFooter({ text: '/ritual' })
     .setTimestamp();
 
   await channel.send({
     content: `${member}`,
     embeds: [embed],
-    allowedMentions: {
-      users: [member.id],
-    },
+    allowedMentions: { users: [member.id] },
   }).catch(console.error);
 }
 
@@ -170,14 +156,10 @@ async function runVoiceXpSweep(client) {
 
   const members = guild.members.cache.filter(member => {
     if (member.user.bot) return false;
-
     const voice = member.voice;
     if (!voice?.channel) return false;
     if (voice.channelId === guild.afkChannelId) return false;
-
-    const realUsersInChannel = voice.channel.members.filter(m => !m.user.bot).size;
-
-    return realUsersInChannel >= 2;
+    return voice.channel.members.filter(m => !m.user.bot).size >= 2;
   });
 
   for (const member of members.values()) {
@@ -200,7 +182,6 @@ function getLeaderboard(guildId, limit = 10) {
 
 function setXp(guildId, userId, xp) {
   const level = calculateLevel(xp);
-
   getUser(guildId, userId);
 
   db.prepare(`

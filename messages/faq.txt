@@ -1,0 +1,22 @@
+# FAQ
+
+## What is /ritual?
+/ritual is a dark community server built around chat, media, voice, giveaways, events, profiles, banners, cars, animals, and a custom bot.
+
+## What is skid?
+skid is the server bot. It handles tickets, levels, logs, applications, voice channels, commands, and auto media posting.
+
+## How do I level up?
+Chat normally and join active voice calls. Spam does not help.
+
+## How do I get special roles?
+Open a ticket and ask about special roles. Obsidian, Ascendant, custom roles, and private channels are handled through owner-approved payments.
+
+## Can I apply for staff?
+Yes. Use the application panel. The bot will DM you the questions one by one.
+
+## Why did my application get denied automatically?
+Your answer was too short, fake, or low effort. Reapply when you are ready to answer properly.
+
+## Can staff see private channels?
+Yes. Private channels are private from members, not from staff.

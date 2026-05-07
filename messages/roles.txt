@@ -1,0 +1,43 @@
+# Roles
+
+✟ Founder
+Server owner.
+
+⟡ Warden
+High staff. Handles serious issues, bans, staff decisions, and server control.
+
+⟠ Enforcer
+Moderator. Handles tickets, reports, timeouts, kicks, chat control, and rule breaking.
+
+⌁ Trial
+Trial staff with limited perms. Mainly timeouts, clears, tickets, and basic moderation.
+
+✦ Support
+Ticket/support helper. Helps members but does not have full mod power.
+
+⛧ Staff
+General staff access role. This alone does not mean full moderation power.
+
+⛧ Obsidian
+Highest special role. Higher placement, private chat access, and better priority.
+
+⟡ Ascendant
+Lower special role. Better placement and priority without full Obsidian perks.
+
+♱ Booster
+Server booster role.
+
+✦ Elite / ⛧ Proven / ⟠ Known / ⟡ Trusted / ⟐ Verified / ⌁ Initiate
+Member status roles earned through activity, trust, or staff approval.
+
+⌁ Level 10 / ⟐ Level 20 / ⟡ Level 40 / ⟠ Level 50 / ⛧ Level 100 / ♱ Level 1000
+Level roles earned from chatting and VC activity.
+
+⟐ Giveaway Winner
+Given to giveaway winners.
+
+PC / Xbox / Playstation
+Platform roles.
+
+Media / Events / Giveaways
+Ping roles for people who want those alerts.

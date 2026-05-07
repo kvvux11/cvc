@@ -14,6 +14,6 @@ module.exports = {
     const car = interaction.options.getString('car');
     const rating = Math.floor(Math.random() * 11);
 
-    await interaction.reply(`🚗 **${car}** gets a **${rating}/10** from CVC.`);
+    await interaction.reply(`🚗 **${car}** gets a **${rating}/10** woo.`);
   },
 };

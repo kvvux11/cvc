@@ -2,100 +2,87 @@ const { PermissionFlagsBits } = require('discord.js');
 const config = require('../config');
 
 function hasRole(member, roleId) {
-  return member?.roles?.cache?.has(roleId);
+  return Boolean(roleId && member?.roles?.cache?.has(roleId));
 }
 
-function isOwner(member) {
-  return hasRole(member, config.roles.owner);
+function isUserOwner(userOrMember) {
+  const id = userOrMember?.id || userOrMember?.user?.id;
+  return id === config.ownerId;
 }
 
-function isAdmin(member) {
-  return isOwner(member) || hasRole(member, config.roles.administrator);
+function isFounder(member) {
+  return isUserOwner(member) || hasRole(member, config.roles.owner);
 }
 
-function isModerator(member) {
-  return isAdmin(member) || hasRole(member, config.roles.moderator);
+function isWarden(member) {
+  return isFounder(member) || hasRole(member, config.roles.warden);
 }
 
-function isTrialModerator(member) {
-  return (
-    isModerator(member) ||
-    hasRole(member, config.roles.trialModerator)
-  );
+function isEnforcer(member) {
+  return isWarden(member) || hasRole(member, config.roles.enforcer);
 }
 
-// General staff access ONLY.
-// Do not use this for ban/kick/admin commands.
+function isTrial(member) {
+  return isEnforcer(member) || hasRole(member, config.roles.trial);
+}
+
 function isStaff(member) {
   return (
-    isOwner(member) ||
-    hasRole(member, config.roles.administrator) ||
-    hasRole(member, config.roles.moderator) ||
-    hasRole(member, config.roles.trialModerator) ||
+    isFounder(member) ||
+    hasRole(member, config.roles.warden) ||
+    hasRole(member, config.roles.enforcer) ||
+    hasRole(member, config.roles.trial) ||
     hasRole(member, config.roles.staff)
   );
 }
 
-function isTicketSupport(member) {
-  return isStaff(member) || hasRole(member, config.roles.ticketSupport);
+function isSupport(member) {
+  return isStaff(member) || hasRole(member, config.roles.support);
 }
 
 function canUseOwner(member) {
-  return isOwner(member);
+  return isFounder(member);
 }
 
-// Owner/Admin only
 function canUseAdmin(member) {
-  return isAdmin(member);
+  return isWarden(member);
 }
 
-// Owner/Admin/Moderator only
-// Trial Moderator does NOT pass this.
 function canUseMod(member) {
-  return isModerator(member);
+  return isEnforcer(member);
 }
 
-// Owner/Admin/Moderator/Trial Moderator
-// For smaller actions only, like timeout/clear.
 function canUseTrialMod(member) {
-  return isTrialModerator(member);
+  return isTrial(member);
 }
 
-// Staff + Ticket Support can handle ticket buttons.
 function canUseTicketTools(member) {
-  return isTicketSupport(member);
+  return isSupport(member);
 }
 
-function deny(message = 'You do not have permission to use this command.') {
-  return {
-    content: message,
-    ephemeral: true,
-  };
+function deny(message = 'You do not have permission to use this.') {
+  return { content: message, ephemeral: true };
 }
-
-const ownerCommandPermission = PermissionFlagsBits.Administrator;
-const adminCommandPermission = PermissionFlagsBits.Administrator;
-const modCommandPermission = PermissionFlagsBits.KickMembers;
-const trialModCommandPermission = PermissionFlagsBits.ModerateMembers;
-const manageMessagesPermission = PermissionFlagsBits.ManageMessages;
 
 module.exports = {
   hasRole,
-  isOwner,
-  isAdmin,
-  isModerator,
-  isTrialModerator,
+  isUserOwner,
+  isFounder,
+  isWarden,
+  isEnforcer,
+  isTrial,
   isStaff,
-  isTicketSupport,
+  isSupport,
   canUseOwner,
   canUseAdmin,
   canUseMod,
   canUseTrialMod,
   canUseTicketTools,
   deny,
-  ownerCommandPermission,
-  adminCommandPermission,
-  modCommandPermission,
-  trialModCommandPermission,
-  manageMessagesPermission,
+
+  ownerCommandPermission: PermissionFlagsBits.Administrator,
+  adminCommandPermission: PermissionFlagsBits.Administrator,
+  modCommandPermission: PermissionFlagsBits.KickMembers,
+  trialModCommandPermission: PermissionFlagsBits.ModerateMembers,
+  manageMessagesPermission: PermissionFlagsBits.ManageMessages,
 };

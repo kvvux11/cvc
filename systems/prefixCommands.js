@@ -1,8 +1,7 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const ms = require('ms');
 const config = require('../config');
 const {
-  isStaff,
   canUseOwner,
   canUseAdmin,
   canUseMod,
@@ -12,7 +11,7 @@ const {
   getProfile,
   getLeaderboard,
   xpForLevel,
-  setXp,
+  setUserLevel,
 } = require('./levels');
 const {
   ticketPanelEmbed,
@@ -24,44 +23,47 @@ const {
 } = require('./tickets');
 const { logModeration } = require('./logger');
 
-const eightBallAnswers = [
-  'yeah',
-  'nah',
-  'probably',
-  'ask later',
-  'looks good',
-  'that sounds dumb ngl',
-  '100%',
-  'not happening',
+const eightBallAnswers = ['yes', 'no', 'probably', 'not even close', 'looks likely', 'ask again later', '100%', 'never'];
+const wyr = [
+  'lose your account or lose your whole friend group?',
+  'be known but hated or unknown but respected?',
+  'never sleep again or never speak again?',
+  'have unlimited money but no privacy or privacy but stay broke?',
+  'be feared or be trusted?',
 ];
-
-const wouldYouRatherQuestions = [
-  'only drive F1 wheel cars forever or only Benny builds forever?',
-  'lose all your rare paints or lose all your rare plates?',
-  'host free drops forever or never get another rare car?',
-  'have one perfect garage or ten messy ones?',
-  'only clean builds or only wild builds?',
+const truths = [
+  'what is something you pretend not to care about?',
+  'who in here gives fake energy?',
+  'what is your worst habit?',
+  'what is one thing you would never admit in public?',
+];
+const dares = [
+  'send the last image in your camera roll.',
+  'change your nickname for 10 minutes.',
+  'join VC and say nothing for 60 seconds.',
+  'ping a friend and say “you are cooked”.',
 ];
 
 function parseTarget(message, raw) {
   if (!raw) return null;
-
   const mention = message.mentions.members.first();
   if (mention) return mention;
-
   const id = raw.replace(/[<@!>]/g, '');
   if (!/^\d+$/.test(id)) return null;
-
   return message.guild.members.cache.get(id) || null;
 }
 
-function makeBasicEmbed(title, description) {
+function embed(title, description) {
   return new EmbedBuilder()
     .setTitle(title)
     .setDescription(description)
-    .setColor(config.colors.red)
-    .setFooter({ text: 'Cruel Violations Customs' })
+    .setColor(config.colors.darkRed || config.colors.red)
+    .setFooter({ text: 'skid • /ritual' })
     .setTimestamp();
+}
+
+function rand(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
 }
 
 async function handlePrefixCommand(message, client) {
@@ -74,546 +76,197 @@ async function handlePrefixCommand(message, client) {
   const command = args.shift().toLowerCase();
 
   if (command === 'help') {
-    const embed = makeBasicEmbed(
-      'CVC Prefix Commands',
-      [
-        '**Community**',
-        '`.help` `.ping` `.level` `.leaderboard` `.profile` `.userinfo` `.avatar` `.serverinfo` `.membercount`',
+    return message.reply({
+      embeds: [embed('skid commands', [
+        '**member**',
+        '`.help` `.ping` `.level` `.profile` `.leaderboard` `.avatar` `.userinfo` `.serverinfo` `.membercount`',
         '',
-        '**Fun**',
-        '`.coinflip` `.8ball` `.ratecar` `.violaterate` `.cleanordirty` `.garagevalue` `.wouldyourather` `.hotgarage`',
+        '**fun**',
+        '`.8ball` `.coinflip` `.choose` `.rate` `.vibecheck` `.aura` `.ship` `.roast` `.compliment` `.truth` `.dare` `.wyr` `.mood` `.sus` `.respect` `.ratio`',
         '',
-        '**Owner Only**',
-        '`.ticketpanel` `.reportpanel` `.applicationpanel` `.say`',
+        '**staff**',
+        '`.timeout` `.clear` `.lock` `.unlock` `.slowmode` `.kick` `.ban` `.addlevel` `.removelevel`',
         '',
-        '**Staff**',
-        '`.timeout` `.clear` `.kick` `.ban` `.drop` `.listcar` `.addlevel` `.removelevel`',
-      ].join('\n')
-    );
-
-    await message.reply({ embeds: [embed] });
-    return true;
+        '**owner**',
+        '`.say` `.ticketpanel` `.reportpanel` `.applicationpanel`',
+      ].join('\n'))],
+    });
   }
 
-  if (command === 'ping') {
-    await message.reply(`Pong — **${client.ws.ping}ms**`);
-    return true;
-  }
+  if (command === 'ping') return message.reply(`pong — **${client.ws.ping}ms**`);
 
-  if (command === 'level') {
+  if (command === 'level' || command === 'profile') {
     const member = message.mentions.members.first() || message.member;
-    const profile = getProfile(message.guild.id, member.id);
-    const nextXp = xpForLevel(profile.level + 1);
+    const p = getProfile(message.guild.id, member.id);
+    const next = xpForLevel(p.level + 1);
 
-    const embed = makeBasicEmbed(
-      `${member.user.username}'s Level`,
-      `**Level:** ${profile.level}\n**XP:** ${profile.xp}/${nextXp}`
-    );
-
-    embed.setThumbnail(member.user.displayAvatarURL({ dynamic: true }));
-
-    await message.reply({ embeds: [embed] });
-    return true;
+    return message.reply({
+      embeds: [embed(`${member.user.username}`, `**Level:** ${p.level}\n**XP:** ${p.xp}/${next}`)
+        .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))],
+    });
   }
 
   if (command === 'leaderboard') {
     const rows = getLeaderboard(message.guild.id, 10);
     const text = rows.length
-      ? rows.map((row, i) => `**${i + 1}.** <@${row.user_id}> — Level ${row.level} | ${row.xp} XP`).join('\n')
-      : 'No leaderboard data yet.';
-
-    await message.reply({ embeds: [makeBasicEmbed('CVC Leaderboard', text)] });
-    return true;
-  }
-
-  if (command === 'profile') {
-    const member = message.mentions.members.first() || message.member;
-    const profile = getProfile(message.guild.id, member.id);
-    const nextXp = xpForLevel(profile.level + 1);
-
-    await message.reply({
-      embeds: [
-        makeBasicEmbed(
-          `${member.user.username}'s CVC Profile`,
-          `**Level:** ${profile.level}\n**XP:** ${profile.xp}/${nextXp}`
-        ).setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
-      ]
-    });
-
-    return true;
-  }
-
-  if (command === 'serverinfo') {
-    await message.guild.members.fetch().catch(() => {});
-
-    const humans = message.guild.members.cache.filter(m => !m.user.bot).size;
-    const bots = message.guild.members.cache.filter(m => m.user.bot).size;
-
-    await message.reply({
-      embeds: [
-        makeBasicEmbed(
-          message.guild.name,
-          `**Members:** ${humans}\n**Bots:** ${bots}\n**Roles:** ${message.guild.roles.cache.size}`
-        ).setThumbnail(message.guild.iconURL({ dynamic: true }))
-      ]
-    });
-
-    return true;
-  }
-
-  if (command === 'userinfo') {
-    const member = message.mentions.members.first() || message.member;
-
-    await message.reply({
-      embeds: [
-        makeBasicEmbed(
-          member.user.tag,
-          `**User ID:** ${member.id}\n**Joined:** <t:${Math.floor(member.joinedTimestamp / 1000)}:R>\n**Created:** <t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`
-        ).setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
-      ]
-    });
-
-    return true;
+      ? rows.map((r, i) => `**${i + 1}.** <@${r.user_id}> — Level ${r.level} | ${r.xp} XP`).join('\n')
+      : 'no levels yet.';
+    return message.reply({ embeds: [embed('leaderboard', text)] });
   }
 
   if (command === 'avatar') {
     const member = message.mentions.members.first() || message.member;
-
-    await message.reply({
-      embeds: [
-        makeBasicEmbed(`${member.user.username}'s Avatar`, ' ')
-          .setImage(member.user.displayAvatarURL({ dynamic: true, size: 1024 }))
-      ]
+    return message.reply({
+      embeds: [embed(`${member.user.username}'s avatar`, ' ')
+        .setImage(member.user.displayAvatarURL({ dynamic: true, size: 1024 }))],
     });
+  }
 
-    return true;
+  if (command === 'userinfo') {
+    const member = message.mentions.members.first() || message.member;
+    return message.reply({
+      embeds: [embed(member.user.tag,
+        `**ID:** ${member.id}\n**Joined:** <t:${Math.floor(member.joinedTimestamp / 1000)}:R>\n**Created:** <t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`)],
+    });
+  }
+
+  if (command === 'serverinfo') {
+    await message.guild.members.fetch().catch(() => {});
+    const humans = message.guild.members.cache.filter(m => !m.user.bot).size;
+    const bots = message.guild.members.cache.filter(m => m.user.bot).size;
+    return message.reply({ embeds: [embed(message.guild.name, `**Members:** ${humans}\n**Bots:** ${bots}\n**Roles:** ${message.guild.roles.cache.size}`)] });
   }
 
   if (command === 'membercount') {
     await message.guild.members.fetch().catch(() => {});
-
     const humans = message.guild.members.cache.filter(m => !m.user.bot).size;
-    const bots = message.guild.members.cache.filter(m => m.user.bot).size;
-
-    await message.reply({
-      embeds: [
-        makeBasicEmbed(
-          'CVC Member Count',
-          `**Members:** ${humans}\n**Bots:** ${bots}\n**Total:** ${humans + bots}`
-        )
-      ]
-    });
-
-    return true;
+    return message.reply({ embeds: [embed('membercount', `**${humans}** members`)] });
   }
 
-  if (command === 'coinflip') {
-    await message.reply(Math.random() < 0.5 ? '🪙 Heads' : '🪙 Tails');
-    return true;
-  }
-
-  if (command === '8ball') {
-    const answer = eightBallAnswers[Math.floor(Math.random() * eightBallAnswers.length)];
-    await message.reply(`🎱 ${answer}`);
-    return true;
-  }
-
-  if (command === 'ratecar') {
-    const car = args.join(' ') || 'that build';
-    const rating = Math.floor(Math.random() * 11);
-
-    await message.reply(`🚗 **${car}** gets a **${rating}/10**`);
-    return true;
-  }
-
-  if (command === 'violaterate') {
-    const thing = args.join(' ') || 'that';
-    const rating = Math.floor(Math.random() * 101);
-
-    await message.reply(`🚨 **${thing}** is a **${rating}% violation**`);
-    return true;
-  }
-
-  if (command === 'cleanordirty') {
-    const build = args.join(' ') || 'that build';
-    const outcomes = [
-      'clean as hell',
-      'a bit dirty',
-      'certified clean',
-      'straight up dirty',
-      'show car material',
-      'needs work',
-    ];
-
-    const result = outcomes[Math.floor(Math.random() * outcomes.length)];
-
-    await message.reply(`🚗 **${build}** is **${result}**`);
-    return true;
-  }
-
-  if (command === 'garagevalue') {
-    const value = Math.floor(Math.random() * 950_000_000) + 50_000_000;
-
-    await message.reply(`💰 ${message.author} your garage is worth **$${value.toLocaleString()}**`);
-    return true;
-  }
-
-  if (command === 'wouldyourather') {
-    const pick = wouldYouRatherQuestions[Math.floor(Math.random() * wouldYouRatherQuestions.length)];
-
-    await message.reply(`**Would you rather** ${pick}`);
-    return true;
-  }
-
-  if (command === 'hotgarage') {
-    const rating = Math.floor(Math.random() * 101);
-
-    await message.reply(`🔥 ${message.author} your garage is **${rating}% heat**`);
-    return true;
-  }
+  if (command === 'coinflip') return message.reply(Math.random() < 0.5 ? 'heads' : 'tails');
+  if (command === '8ball') return message.reply(rand(eightBallAnswers));
+  if (command === 'choose') return message.reply(args.join(' ').split('|').map(x => x.trim()).filter(Boolean).length ? rand(args.join(' ').split('|').map(x => x.trim()).filter(Boolean)) : 'use `.choose option 1 | option 2`');
+  if (command === 'rate') return message.reply(`${args.join(' ') || 'that'} gets **${Math.floor(Math.random() * 101)}/100**`);
+  if (command === 'vibecheck') return message.reply(`${message.mentions.users.first() || message.author} is **${Math.floor(Math.random() * 101)}%** vibe.`);
+  if (command === 'aura') return message.reply(`${message.mentions.users.first() || message.author} has **${Math.floor(Math.random() * 2001) - 1000} aura**.`);
+  if (command === 'ship') return message.reply(`compatibility: **${Math.floor(Math.random() * 101)}%**`);
+  if (command === 'roast') return message.reply(`${message.mentions.users.first() || message.author} you look like your phone autocorrects you to “mistake”.`);
+  if (command === 'compliment') return message.reply(`${message.mentions.users.first() || message.author} lowkey you carry the room.`);
+  if (command === 'truth') return message.reply(rand(truths));
+  if (command === 'dare') return message.reply(rand(dares));
+  if (command === 'wyr' || command === 'wouldyourather') return message.reply(`would you rather ${rand(wyr)}`);
+  if (command === 'mood') return message.reply(`today's mood: **${rand(['locked in', 'offline', 'dangerous', 'quiet', 'unreadable', 'spiraling', 'clean'])}**`);
+  if (command === 'sus') return message.reply(`${message.mentions.users.first() || message.author} is **${Math.floor(Math.random() * 101)}%** suspicious.`);
+  if (command === 'respect') return message.reply(`${message.mentions.users.first() || message.author} has **${Math.floor(Math.random() * 101)}%** respect.`);
+  if (command === 'ratio') return message.reply(Math.random() > 0.5 ? 'ratio accepted.' : 'ratio failed. embarrassing.');
 
   if (command === 'ticketpanel') {
-    if (!canUseOwner(message.member)) {
-      await message.reply('Only the owner can do that.');
-      return true;
-    }
-
-    const channel = await message.guild.channels.fetch(config.channels.openTicket).catch(() => null);
-
-    if (!channel) {
-      await message.reply('Open-a-ticket channel not found.');
-      return true;
-    }
-
-    await channel.send({
-      embeds: [ticketPanelEmbed()],
-      components: [ticketButtons()],
-    });
-
-    await message.reply('Ticket panel posted.');
-    return true;
+    if (!canUseOwner(message.member)) return message.reply('owner only.');
+    const ch = await message.guild.channels.fetch(config.channels.tickets).catch(() => null);
+    if (!ch) return message.reply('tickets channel missing.');
+    await ch.send({ embeds: [ticketPanelEmbed()], components: ticketButtons() });
+    return message.reply('posted.');
   }
 
   if (command === 'reportpanel') {
-    if (!canUseOwner(message.member)) {
-      await message.reply('Only the owner can do that.');
-      return true;
-    }
-
-    const channel = await message.guild.channels.fetch(config.channels.reportUser).catch(() => null);
-
-    if (!channel) {
-      await message.reply('Report-a-user channel not found.');
-      return true;
-    }
-
-    await channel.send({
-      embeds: [reportPanelEmbed()],
-      components: [reportButtons()],
-    });
-
-    await message.reply('Report panel posted.');
-    return true;
+    if (!canUseOwner(message.member)) return message.reply('owner only.');
+    const ch = await message.guild.channels.fetch(config.channels.reportsPanel).catch(() => null);
+    if (!ch) return message.reply('reports channel missing.');
+    await ch.send({ embeds: [reportPanelEmbed()], components: [reportButtons()] });
+    return message.reply('posted.');
   }
 
-  if (command === 'applicationpanel' || command === 'apppanel' || command === 'staffapps') {
-    if (!canUseOwner(message.member)) {
-      await message.reply('Only the owner can do that.');
-      return true;
-    }
-
-    const channel = await message.guild.channels.fetch(config.channels.staffApplications).catch(() => null);
-
-    if (!channel) {
-      await message.reply('Staff applications channel not found.');
-      return true;
-    }
-
-    await channel.send({
-      embeds: [applicationPanelEmbed()],
-      components: [applicationButtons()],
-    });
-
-    await message.reply('Application panel posted.');
-    return true;
-  }
-
-  if (command === 'drop') {
-    const allowed = isStaff(message.member) || message.member.roles.cache.has(config.roles.verifiedHost);
-
-    if (!allowed) {
-      await message.reply('Only staff or Verified Hosts can use that.');
-      return true;
-    }
-
-    const text = args.join(' ');
-
-    if (!text) {
-      await message.reply('Use it like: `.drop some message here`');
-      return true;
-    }
-
-    const channel = await message.guild.channels.fetch(config.channels.carDrop).catch(() => null);
-
-    if (!channel) {
-      await message.reply('Car drop channel not found.');
-      return true;
-    }
-
-    await channel.send({
-      embeds: [
-        makeBasicEmbed('Car Drop', text).addFields({
-          name: 'Posted By',
-          value: `${message.author}`,
-        })
-      ]
-    });
-
-    await message.reply('Drop posted.');
-    return true;
-  }
-
-  if (command === 'listcar') {
-    const allowed = isStaff(message.member) || message.member.roles.cache.has(config.roles.verifiedHost);
-
-    if (!allowed) {
-      await message.reply('Only staff or Verified Hosts can use that.');
-      return true;
-    }
-
-    const joined = args.join(' ');
-    const parts = joined.split('|').map(x => x.trim());
-
-    if (parts.length < 5) {
-      await message.reply('Use it like: `.listcar car | platform | mods | access | availability`');
-      return true;
-    }
-
-    const [car, platform, mods, access, availability] = parts;
-    const channel = await message.guild.channels.fetch(config.channels.carDrop).catch(() => null);
-
-    if (!channel) {
-      await message.reply('Car drop channel not found.');
-      return true;
-    }
-
-    const embed = new EmbedBuilder()
-      .setTitle('New Car Listing')
-      .setColor(config.colors.red)
-      .addFields(
-        { name: 'Car', value: car, inline: true },
-        { name: 'Platform', value: platform, inline: true },
-        { name: 'Access', value: access, inline: true },
-        { name: 'Mods/Features', value: mods },
-        { name: 'Availability', value: availability },
-        { name: 'Host', value: `${message.author}` }
-      )
-      .setFooter({ text: 'Cruel Violations Customs' })
-      .setTimestamp();
-
-    await channel.send({ embeds: [embed] });
-    await message.reply('Car listing posted.');
-
-    return true;
-  }
-
-  if (command === 'kick') {
-    if (!canUseMod(message.member)) {
-      await message.reply('Only moderators or above can do that.');
-      return true;
-    }
-
-    const rawTarget = args.shift();
-    const target = parseTarget(message, rawTarget);
-    const reason = args.join(' ') || 'No reason provided.';
-
-    if (!target) {
-      await message.reply('Use it like: `.kick @user reason`');
-      return true;
-    }
-
-    if (!target.kickable) {
-      await message.reply('I cannot kick that member.');
-      return true;
-    }
-
-    await target.send(`You were kicked from **${message.guild.name}**.\n**Reason:** ${reason}`).catch(() => {});
-    await target.kick(reason);
-
-    await logModeration(client, 'Member Kicked', [
-      { name: 'User', value: `${target.user.tag}`, inline: true },
-      { name: 'Moderator', value: `${message.author.tag}`, inline: true },
-      { name: 'Reason', value: reason },
-    ]);
-
-    await message.reply(`Kicked **${target.user.tag}**`);
-    return true;
-  }
-
-  if (command === 'ban') {
-    if (!canUseAdmin(message.member)) {
-      await message.reply('Only admins can do that.');
-      return true;
-    }
-
-    const rawTarget = args.shift();
-    const id = rawTarget?.replace(/[<@!>]/g, '');
-    const reason = args.join(' ') || 'No reason provided.';
-
-    if (!id || !/^\d+$/.test(id)) {
-      await message.reply('Use it like: `.ban 123456789 reason` or `.ban @user reason`');
-      return true;
-    }
-
-    const member = message.guild.members.cache.get(id) || null;
-
-    if (member) {
-      await member.send(`You were banned from **${message.guild.name}**.\n**Reason:** ${reason}`).catch(() => {});
-    }
-
-    await message.guild.members.ban(id, { reason }).catch(async () => {
-      await message.reply('I could not ban that user.');
-    });
-
-    await logModeration(client, 'Member Banned', [
-      { name: 'User ID', value: id, inline: true },
-      { name: 'Admin', value: `${message.author.tag}`, inline: true },
-      { name: 'Reason', value: reason },
-    ]);
-
-    await message.reply(`Banned **${id}**`);
-    return true;
-  }
-
-  if (command === 'timeout') {
-    if (!canUseTrialMod(message.member)) {
-      await message.reply('Only trial moderators or above can do that.');
-      return true;
-    }
-
-    const rawTarget = args.shift();
-    const durationRaw = args.shift();
-    const target = parseTarget(message, rawTarget);
-    const duration = ms(durationRaw || '');
-    const reason = args.join(' ') || 'No reason provided.';
-
-    if (!target || !durationRaw) {
-      await message.reply('Use it like: `.timeout @user 10m reason`');
-      return true;
-    }
-
-    if (!duration || duration > ms('28d')) {
-      await message.reply('Use a valid duration under 28d. Example: `10m`, `1h`, `1d`');
-      return true;
-    }
-
-    if (!target.moderatable) {
-      await message.reply('I cannot timeout that member.');
-      return true;
-    }
-
-    await target.send(`You were timed out in **${message.guild.name}**.\n**Duration:** ${durationRaw}\n**Reason:** ${reason}`).catch(() => {});
-    await target.timeout(duration, reason);
-
-    await logModeration(client, 'Member Timed Out', [
-      { name: 'User', value: `${target.user.tag}`, inline: true },
-      { name: 'Moderator', value: `${message.author.tag}`, inline: true },
-      { name: 'Duration', value: durationRaw, inline: true },
-      { name: 'Reason', value: reason },
-    ]);
-
-    await message.reply(`Timed out **${target.user.tag}** for **${durationRaw}**`);
-    return true;
-  }
-
-  if (command === 'clear') {
-    if (!canUseTrialMod(message.member)) {
-      await message.reply('Only trial moderators or above can do that.');
-      return true;
-    }
-
-    const amount = parseInt(args[0], 10);
-
-    if (!amount || amount < 1 || amount > 100) {
-      await message.reply('Use it like: `.clear 20`');
-      return true;
-    }
-
-    await message.channel.bulkDelete(amount, true).catch(() => {});
-
-    await message.reply(`Deleted **${amount}** messages.`).then(msg => {
-      setTimeout(() => msg.delete().catch(() => {}), 2500);
-    });
-
-    return true;
+  if (command === 'applicationpanel') {
+    if (!canUseOwner(message.member)) return message.reply('owner only.');
+    const ch = await message.guild.channels.fetch(config.channels.applications).catch(() => null);
+    if (!ch) return message.reply('applications channel missing.');
+    await ch.send({ embeds: [applicationPanelEmbed()], components: [applicationButtons()] });
+    return message.reply('posted.');
   }
 
   if (command === 'say') {
-    if (!canUseOwner(message.member)) {
-      await message.reply('Only the owner can do that.');
-      return true;
-    }
-
+    if (!canUseOwner(message.member)) return message.reply('owner only.');
     const text = args.join(' ');
-
-    if (!text) {
-      await message.reply('Use it like: `.say your message here`');
-      return true;
-    }
-
+    if (!text) return message.reply('say what?');
     await message.channel.send(text);
     await message.delete().catch(() => {});
     return true;
   }
 
-  if (command === 'addlevel') {
-    if (!canUseMod(message.member)) {
-      await message.reply('Only moderators or above can do that.');
-      return true;
-    }
-
-    const rawTarget = args.shift();
-    const amount = parseInt(args.shift(), 10);
-    const target = parseTarget(message, rawTarget);
-
-    if (!target || !amount || amount < 1) {
-      await message.reply('Use it like: `.addlevel @user 5`');
-      return true;
-    }
-
-    const profile = getProfile(message.guild.id, target.id);
-    const newLevel = profile.level + amount;
-    const newXp = xpForLevel(newLevel);
-
-    setXp(message.guild.id, target.id, newXp);
-
-    await message.reply(`Added **${amount}** level(s) to ${target}. They are now **Level ${newLevel}**.`);
-    return true;
+  if (command === 'clear') {
+    if (!canUseTrialMod(message.member)) return message.reply('trial+ only.');
+    const amount = parseInt(args[0], 10);
+    if (!amount || amount < 1 || amount > 100) return message.reply('use `.clear 20`');
+    await message.channel.bulkDelete(amount, true).catch(() => {});
+    return message.reply(`deleted **${amount}** messages.`).then(m => setTimeout(() => m.delete().catch(() => {}), 2500));
   }
 
-  if (command === 'removelevel') {
-    if (!canUseMod(message.member)) {
-      await message.reply('Only moderators or above can do that.');
-      return true;
-    }
+  if (command === 'timeout') {
+    if (!canUseTrialMod(message.member)) return message.reply('trial+ only.');
+    const target = parseTarget(message, args.shift());
+    const durationRaw = args.shift();
+    const duration = ms(durationRaw || '');
+    const reason = args.join(' ') || 'No reason provided.';
+    if (!target || !duration || duration > ms('28d')) return message.reply('use `.timeout @user 10m reason`');
+    if (!target.moderatable) return message.reply('I cannot timeout them.');
+    await target.timeout(duration, reason);
+    await target.send(`You were timed out in **${message.guild.name}** for **${durationRaw}**.\nReason: ${reason}`).catch(() => {});
+    await logModeration(client, 'Member Timed Out', [
+      { name: 'User', value: target.user.tag, inline: true },
+      { name: 'Staff', value: message.author.tag, inline: true },
+      { name: 'Reason', value: reason },
+    ]);
+    return message.reply(`timed out **${target.user.tag}** for **${durationRaw}**`);
+  }
 
-    const rawTarget = args.shift();
+  if (command === 'kick') {
+    if (!canUseMod(message.member)) return message.reply('enforcer+ only.');
+    const target = parseTarget(message, args.shift());
+    const reason = args.join(' ') || 'No reason provided.';
+    if (!target || !target.kickable) return message.reply('cannot kick them.');
+    await target.kick(reason);
+    return message.reply(`kicked **${target.user.tag}**`);
+  }
+
+  if (command === 'ban') {
+    if (!canUseAdmin(message.member)) return message.reply('warden+ only.');
+    const raw = args.shift();
+    const id = raw?.replace(/[<@!>]/g, '');
+    const reason = args.join(' ') || 'No reason provided.';
+    if (!id || !/^\d+$/.test(id)) return message.reply('use `.ban userId reason`');
+    await message.guild.members.ban(id, { reason }).catch(() => null);
+    return message.reply(`banned **${id}**`);
+  }
+
+  if (command === 'lock') {
+    if (!canUseMod(message.member)) return message.reply('enforcer+ only.');
+    await message.channel.permissionOverwrites.edit(message.guild.roles.everyone, { SendMessages: false });
+    return message.reply('locked.');
+  }
+
+  if (command === 'unlock') {
+    if (!canUseMod(message.member)) return message.reply('enforcer+ only.');
+    await message.channel.permissionOverwrites.edit(message.guild.roles.everyone, { SendMessages: null });
+    return message.reply('unlocked.');
+  }
+
+  if (command === 'slowmode') {
+    if (!canUseTrialMod(message.member)) return message.reply('trial+ only.');
+    const seconds = parseInt(args[0], 10);
+    if (Number.isNaN(seconds) || seconds < 0 || seconds > 21600) return message.reply('use `.slowmode 5`');
+    await message.channel.setRateLimitPerUser(seconds);
+    return message.reply(`slowmode set to **${seconds}s**`);
+  }
+
+  if (command === 'addlevel' || command === 'removelevel') {
+    if (!canUseMod(message.member)) return message.reply('enforcer+ only.');
+    const target = parseTarget(message, args.shift());
     const amount = parseInt(args.shift(), 10);
-    const target = parseTarget(message, rawTarget);
-
-    if (!target || !amount || amount < 1) {
-      await message.reply('Use it like: `.removelevel @user 5`');
-      return true;
-    }
-
+    if (!target || !amount || amount < 1) return message.reply(`use \`.${command} @user 5\``);
     const profile = getProfile(message.guild.id, target.id);
-    const newLevel = Math.max(0, profile.level - amount);
-    const newXp = xpForLevel(newLevel);
-
-    setXp(message.guild.id, target.id, newXp);
-
-    await message.reply(`Removed **${amount}** level(s) from ${target}. They are now **Level ${newLevel}**.`);
-    return true;
+    const next = command === 'addlevel' ? profile.level + amount : Math.max(0, profile.level - amount);
+    await setUserLevel(message.guild, target, next, 'Staff Level Update');
+    return message.reply(`${target} is now **Level ${next}**.`);
   }
 
   return false;
