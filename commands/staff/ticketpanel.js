@@ -14,18 +14,20 @@ module.exports = {
       return interaction.reply(deny('Only the owner can use this command.'));
     }
 
-    const channel = await interaction.guild.channels.fetch(config.channels.openTicket).catch(() => null);
+    const channel = await interaction.guild.channels
+      .fetch(config.channels.openTicket)
+      .catch(() => null);
 
     if (!channel) {
       return interaction.reply({
-        content: 'Open-a-ticket channel not found.',
+        content: 'Ticket channel not found. Check config.channels.openTicket.',
         ephemeral: true,
       });
     }
 
     await channel.send({
       embeds: [ticketPanelEmbed()],
-      components: [ticketButtons()],
+      components: ticketButtons(),
     });
 
     await interaction.reply({
