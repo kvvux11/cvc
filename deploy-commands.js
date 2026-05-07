@@ -7,6 +7,11 @@ require('dotenv').config();
 const commands = [];
 
 function loadCommands(dir) {
+  if (!fs.existsSync(dir)) {
+    console.log(`Commands folder not found: ${dir}`);
+    return;
+  }
+
   const files = fs.readdirSync(dir, { withFileTypes: true });
 
   for (const file of files) {
@@ -21,13 +26,13 @@ function loadCommands(dir) {
 
     const command = require(fullPath);
 
-    if (!command.data) {
-      console.log(`[SKIPPED] ${file.name} missing data.`);
+    if (!command.data || !command.execute) {
+      console.log(`[SKIPPED] ${file.name} is missing data or execute.`);
       continue;
     }
 
     commands.push(command.data.toJSON());
-    console.log(`[DEPLOY READY] ${command.data.name}`);
+    console.log(`[DEPLOYING] ${command.data.name}`);
   }
 }
 
@@ -35,17 +40,19 @@ loadCommands(path.join(__dirname, 'commands'));
 
 const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
 
-(async () => {
+async function deploy() {
   try {
-    console.log(`Deploying ${commands.length} slash commands...`);
+    console.log(`Started refreshing ${commands.length} application commands.`);
 
     await rest.put(
       Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
-      { body: commands }
+      { body: commands },
     );
 
-    console.log('Slash commands deployed.');
+    console.log(`Successfully deployed ${commands.length} commands.`);
   } catch (error) {
     console.error(error);
   }
-})();
+}
+
+deploy();
