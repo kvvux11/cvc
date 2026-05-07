@@ -6,6 +6,10 @@ require('dotenv').config();
 
 const commands = [];
 
+function clearRequireCache(filePath) {
+  delete require.cache[require.resolve(filePath)];
+}
+
 function loadCommands(dir) {
   if (!fs.existsSync(dir)) {
     console.log(`Commands folder not found: ${dir}`);
@@ -24,15 +28,21 @@ function loadCommands(dir) {
 
     if (!file.name.endsWith('.js')) continue;
 
-    const command = require(fullPath);
+    try {
+      clearRequireCache(fullPath);
+      const command = require(fullPath);
 
-    if (!command.data || !command.execute) {
-      console.log(`[SKIPPED] ${file.name} is missing data or execute.`);
-      continue;
+      if (!command.data || !command.execute) {
+        console.log(`[SKIPPED] ${file.name} is missing data or execute.`);
+        continue;
+      }
+
+      commands.push(command.data.toJSON());
+      console.log(`[DEPLOYING] ${command.data.name}`);
+    } catch (error) {
+      console.log(`[FAILED] ${file.name}`);
+      console.error(error);
     }
-
-    commands.push(command.data.toJSON());
-    console.log(`[DEPLOYING] ${command.data.name}`);
   }
 }
 
@@ -42,7 +52,12 @@ const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
 
 async function deploy() {
   try {
-    console.log(`Started refreshing ${commands.length} application commands.`);
+    if (!process.env.TOKEN || !process.env.CLIENT_ID || !process.env.GUILD_ID) {
+      console.log('Missing TOKEN, CLIENT_ID, or GUILD_ID in .env');
+      return;
+    }
+
+    console.log(`Started refreshing ${commands.length} guild commands.`);
 
     await rest.put(
       Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),

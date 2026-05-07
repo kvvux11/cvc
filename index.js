@@ -10,6 +10,7 @@ const {
 require('dotenv').config();
 
 const { handleTicketButton, handleTicketModal } = require('./systems/tickets');
+const { handleVoiceButton, handleVoiceModal } = require('./systems/tempVoice');
 
 const client = new Client({
   intents: [
@@ -20,9 +21,8 @@ const client = new Client({
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMessageReactions,
     GatewayIntentBits.GuildModeration,
-
-    // needed for DM applications
     GatewayIntentBits.DirectMessages,
+    GatewayIntentBits.GuildVoiceStates,
   ],
   partials: [
     Partials.Message,
@@ -50,15 +50,20 @@ function loadCommands(dir) {
 
     if (!file.name.endsWith('.js')) continue;
 
-    const command = require(fullPath);
+    try {
+      const command = require(fullPath);
 
-    if (!command.data || !command.execute) {
-      console.log(`[SKIPPED COMMAND] ${file.name} is missing data or execute.`);
-      continue;
+      if (!command.data || !command.execute) {
+        console.log(`[SKIPPED COMMAND] ${file.name} is missing data or execute.`);
+        continue;
+      }
+
+      client.commands.set(command.data.name, command);
+      console.log(`[COMMAND LOADED] ${command.data.name}`);
+    } catch (error) {
+      console.log(`[FAILED COMMAND] ${file.name}`);
+      console.error(error);
     }
-
-    client.commands.set(command.data.name, command);
-    console.log(`[COMMAND LOADED] ${command.data.name}`);
   }
 }
 
@@ -69,20 +74,26 @@ function loadEvents(dir) {
 
   for (const file of files) {
     const fullPath = path.join(dir, file);
-    const event = require(fullPath);
 
-    if (!event.name || !event.execute) {
-      console.log(`[SKIPPED EVENT] ${file} is missing name or execute.`);
-      continue;
+    try {
+      const event = require(fullPath);
+
+      if (!event.name || !event.execute) {
+        console.log(`[SKIPPED EVENT] ${file} is missing name or execute.`);
+        continue;
+      }
+
+      if (event.once) {
+        client.once(event.name, (...args) => event.execute(...args, client));
+      } else {
+        client.on(event.name, (...args) => event.execute(...args, client));
+      }
+
+      console.log(`[EVENT LOADED] ${event.name}`);
+    } catch (error) {
+      console.log(`[FAILED EVENT] ${file}`);
+      console.error(error);
     }
-
-    if (event.once) {
-      client.once(event.name, (...args) => event.execute(...args, client));
-    } else {
-      client.on(event.name, (...args) => event.execute(...args, client));
-    }
-
-    console.log(`[EVENT LOADED] ${event.name}`);
   }
 }
 
@@ -92,10 +103,16 @@ loadEvents(path.join(__dirname, 'events'));
 client.on('interactionCreate', async interaction => {
   try {
     if (interaction.isButton()) {
+      const handledVoice = await handleVoiceButton(interaction);
+      if (handledVoice) return;
+
       return await handleTicketButton(interaction, client);
     }
 
     if (interaction.isModalSubmit()) {
+      const handledVoiceModal = await handleVoiceModal(interaction);
+      if (handledVoiceModal) return;
+
       return await handleTicketModal(interaction, client);
     }
 
