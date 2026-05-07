@@ -82,7 +82,6 @@ module.exports = {
     ascendant: '1501356676736094399',
     statusRoles: '1501356696805576824',
 
-    // legacy fallback names
     carDrop: '1501477889353449483',
     marketForum: '1501359314860773438',
     vouches: '1501348288920682586',
@@ -116,38 +115,8 @@ module.exports = {
   mediaPoster: {
     enabled: true,
 
-    // 10 seconds. This is fast. Change to 600000 for 10 minutes.
+    // 10 seconds. Change this to 600000 for 10 minutes later.
     intervalMs: 10000,
-
-    folders: {
-      pfps: './assets/pfps',
-      banners: './assets/banners',
-      animals: './assets/animals',
-      cars: './assets/cars',
-    },
-
-    remote: {
-      pfps: [
-        'https://picsum.photos/512/512?random=pfp1',
-        'https://picsum.photos/512/512?random=pfp2',
-        'https://picsum.photos/512/512?random=pfp3',
-      ],
-      banners: [
-        'https://picsum.photos/1200/400?random=banner1',
-        'https://picsum.photos/1200/400?random=banner2',
-        'https://picsum.photos/1200/400?random=banner3',
-      ],
-      animals: [
-        'https://picsum.photos/900/900?random=animal1',
-        'https://picsum.photos/900/900?random=animal2',
-        'https://picsum.photos/900/900?random=animal3',
-      ],
-      cars: [
-        'https://picsum.photos/900/900?random=car1',
-        'https://picsum.photos/900/900?random=car2',
-        'https://picsum.photos/900/900?random=car3',
-      ],
-    },
   },
 
   prices: {
@@ -155,17 +124,21 @@ module.exports = {
       monthly: '$5 AUD',
       permanent: '$12 AUD',
     },
+
     ascendant: {
       monthly: '$3 AUD',
       permanent: '$8 AUD',
     },
+
     customRole: {
       oneTime: '$5 AUD',
     },
+
     privateChannel: {
       monthly: '$8 AUD',
       permanent: '$18 AUD',
     },
+
     customBundle: {
       permanent: '$20 AUD',
     },

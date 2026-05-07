@@ -1,29 +1,44 @@
 const { EmbedBuilder } = require('discord.js');
 const config = require('../config');
 
+let postedThisRun = false;
+
 async function postServerUpdate(client, updates = []) {
-  const channel = await client.channels.fetch(config.channels.serverUpdates).catch(() => null);
-  if (!channel) return;
+  if (postedThisRun) return;
+  postedThisRun = true;
 
-  const today = new Date().toISOString().slice(0, 10);
-  const key = `ritual-update-${today}`;
+  const channel = await client.channels
+    .fetch(config.channels.serverUpdates)
+    .catch(() => null);
 
-  // simple in-memory guard per restart; keeps it from spamming when ready runs once.
-  if (client.__lastServerUpdateKey === key) return;
-  client.__lastServerUpdateKey = key;
+  if (!channel) {
+    console.log('[SERVER UPDATES] Channel not found.');
+    return;
+  }
+
+  const updateList = Array.isArray(updates)
+    ? updates
+    : [String(updates)];
+
+  const description = updateList
+    .filter(Boolean)
+    .map(update => `• ${update}`)
+    .join('\n');
 
   const embed = new EmbedBuilder()
-    .setTitle('Server Update')
+    .setTitle('/ritual update')
     .setColor(config.colors.darkRed || config.colors.red)
-    .setDescription('small cleanup pushed live.')
-    .addFields({
-      name: 'Changed',
-      value: updates.map(x => `• ${x}`).join('\n').slice(0, 1024) || '• general fixes',
-    })
-    .setFooter({ text: 'skid • /ritual' })
+    .setDescription(description || 'skid has been updated.')
+    .setFooter({ text: 'skid system update' })
     .setTimestamp();
 
-  await channel.send({ embeds: [embed] });
+  await channel.send({
+    embeds: [embed],
+  }).catch(console.error);
+
+  console.log('[SERVER UPDATES] Posted update message.');
 }
 
-module.exports = { postServerUpdate };
+module.exports = {
+  postServerUpdate,
+};
