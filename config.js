@@ -6,37 +6,43 @@ module.exports = {
 
   roles: {
     member: '1501348843688562898',
-    verified: '1501354309751935120',
-    trusted: '1501354519420993596',
-    known: '1501354682113589449',
-    proven: '1501354880156045313',
-    elite: '1501354742687731782',
-    obsidian: '1501354742687731782',
+    verified: '1501348802253029476',
+    trusted: '1501348890882871407',
+    known: '1501976905862353138',
+    proven: '1501977118274490548',
+    elite: '1501977280270827560',
+
     ascendant: '1501354880156045313',
-    booster: '1501355409137602660',
+    obsidian: '1501354742687731782',
+
     owner: '1501348430113411122',
     administrator: '1501348585198063619',
     moderator: '1501348657633558726',
     trialModerator: '1501348695872901221',
     staff: '1501488262534004789',
     ticketSupport: '1501501747301060669',
+
     awaitingSupportInterview: '1501617810395107368',
     awaitingAdminInterview: '1501618015190650890',
     awaitingModInterview: '1501618073096945807',
+
     signalsPing: '1501355269475536926',
     mediaPing: '1501355363507769434',
     giveawayPing: '1501355409137602660',
     callsPing: '1501355094153625660',
     eventsPing: '1501355050524606585',
+
     pc: '1501355094153625660',
     xbox: '1501355050524606585',
     playstation: '1501355017423159316',
+
     level10: '1501485438932877354',
     level20: '1501485708001677322',
     level40: '1501485728595578960',
     level50: '1501485745376989244',
     level100: '1501485768768753765',
     level1000: '1501485789144416346',
+
     giveawayWinner: '1501355409137602660',
   },
 
@@ -46,28 +52,34 @@ module.exports = {
     roles: '1501348035672670278',
     general: '1501348086252048605',
     ritual: '1501348103653953566',
+
     pfps: '1501477889353449483',
     banners: '1501937861786861718',
-    animals: '1501937902270021692',
-    cars: '1501937949179121725',
+
     levels: '1502033587099271219',
+
     openTicket: '1501356752011137197',
     reportUser: '1501356450545664051',
     staffApplications: '1501598203802423366',
     reportsForum: '1501471777560199198',
     acceptedApplications: '1501619156095729694',
+
     modLogs: '1501356843509747903',
+
     memberCount: '1501487066502922320',
     onlineMembers: '1501487163051741255',
     staffCount: '1501487225181962350',
     staffOnline: '1501487310099845190',
+
     clickToCreateVoice: '1501980819659554876',
     channelCommands: '1502034096929505381',
+
     obsidian: '1501356613238390936',
     ascendant: '1501356676736094399',
     statusRoles: '1501356696805576824',
 
-    // legacy fallback names
+    animals: '',
+    cars: '',
     carDrop: '1501477889353449483',
     marketForum: '1501359314860773438',
     vouches: '1501348288920682586',
@@ -92,7 +104,7 @@ module.exports = {
 
   mediaPoster: {
     enabled: true,
-    intervalMs: 10000,
+    intervalMs: 5000,
   },
 
   prices: {

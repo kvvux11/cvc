@@ -7,7 +7,7 @@ Default member role.
 Unlocked at Level 10.
 
 ⟡ Trusted
-Unlocked at Level 20. Trusted members can chat in the ritual channel.
+Unlocked at Level 20. Trusted members can speak in the ritual channel.
 
 ⟠ Known
 Unlocked at Level 40.
@@ -22,10 +22,10 @@ Unlocked at Level 100.
 Paid status role, or earned free at Level 1000.
 
 ⛧ Obsidian
-Highest paid status role.
+Highest paid status role. This is not earned through levels.
 
 ✟ Founder
-Server owner.
+Owner.
 
 ⟡ Warden
 Administrator.
@@ -38,3 +38,12 @@ Trial moderator.
 
 ✦ Support
 Ticket support.
+
+✦ Signals
+Server update pings.
+
+⌁ Media
+Media/pfp/banner pings.
+
+⟐ Giveaways
+Giveaway pings.

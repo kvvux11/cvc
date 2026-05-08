@@ -1,14 +1,31 @@
 # Rules
 
-1. Do not dox, threaten, swat, leak, or post personal information.
-2. Do not raid, nuke, mass ping, or spam.
-3. Do not post illegal content.
-4. Do not post gore, NSFW, or weird content in public channels.
-5. Do not impersonate staff or act like you have authority.
-6. Do not scam, fake proof, fake payments, or lie in tickets.
-7. Keep arguments out of main chat. Staff can move or end it.
-8. Do not abuse private channels, special roles, or paid perks.
-9. Do not beg for staff, roles, money, or special treatment.
-10. Staff decisions are final. If there is a real issue, make a ticket.
+1. Do not leak personal information.
+No doxxing, threats, swatting, leaking addresses, phone numbers, family info, schools, workplaces, or private accounts.
 
-Dark server does not mean stupid server. Keep it clean.
+2. Do not raid or organize raids.
+Do not use this server to target other servers, people, or communities.
+
+3. Keep it controlled.
+Dark humor and edgy jokes do not mean you can be racist, weird, or constantly start problems.
+
+4. No scams.
+Do not fake proof, fake payments, steal accounts, or trick members.
+
+5. No spam.
+Do not flood channels, spam pings, spam media, or abuse bot commands.
+
+6. No NSFW.
+Keep NSFW out of the server.
+
+7. Respect staff decisions.
+If staff tell you to stop, stop. If you disagree, open a ticket.
+
+8. No impersonation.
+Do not pretend to be staff, the owner, or another member.
+
+9. Use channels properly.
+Keep media in media channels, support in tickets, and normal chat in main channels.
+
+10. Staff can act if needed.
+Trying to loophole rules can still get you muted, kicked, banned, or restricted.

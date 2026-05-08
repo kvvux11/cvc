@@ -36,15 +36,11 @@ function xpForLevel(level) {
 
 function calculateLevel(xp) {
   let level = 0;
-
-  while (xp >= xpForLevel(level + 1)) {
-    level++;
-  }
-
+  while (xp >= xpForLevel(level + 1)) level++;
   return level;
 }
 
-function rewardRolesForLevel(level) {
+function getPlainLevelRewards(level) {
   return [
     { level: 10, role: config.roles.level10 },
     { level: 20, role: config.roles.level20 },
@@ -52,33 +48,62 @@ function rewardRolesForLevel(level) {
     { level: 50, role: config.roles.level50 },
     { level: 100, role: config.roles.level100 },
     { level: 1000, role: config.roles.level1000 },
-
-    { level: 10, role: config.roles.verified },
-    { level: 20, role: config.roles.trusted },
-    { level: 40, role: config.roles.known },
-    { level: 50, role: config.roles.proven },
-    { level: 100, role: config.roles.elite },
-    { level: 1000, role: config.roles.ascendant },
   ].filter(reward => level >= reward.level && reward.role);
 }
 
-function getRewardText(level) {
-  if (level >= 1000) return '⟡ Ascendant unlocked.';
-  if (level >= 100) return '♱ Elite unlocked.';
-  if (level >= 50) return '⛧ Proven unlocked.';
-  if (level >= 40) return '⟠ Known unlocked.';
-  if (level >= 20) return '⟡ Trusted unlocked.';
-  if (level >= 10) return '⟐ Verified unlocked.';
-  return 'Keep climbing.';
+function getStatusRoleForLevel(level) {
+  if (level >= 1000) return { role: config.roles.ascendant, name: '⟡ Ascendant' };
+  if (level >= 100) return { role: config.roles.elite, name: '♱ Elite' };
+  if (level >= 50) return { role: config.roles.proven, name: '⛧ Proven' };
+  if (level >= 40) return { role: config.roles.known, name: '⟠ Known' };
+  if (level >= 20) return { role: config.roles.trusted, name: '⟡ Trusted' };
+  if (level >= 10) return { role: config.roles.verified, name: '⟐ Verified' };
+  return { role: config.roles.member, name: '⌁ Initiate' };
+}
+
+function getProgressionRoles() {
+  return [
+    config.roles.member,
+    config.roles.verified,
+    config.roles.trusted,
+    config.roles.known,
+    config.roles.proven,
+    config.roles.elite,
+    config.roles.ascendant,
+  ].filter(Boolean);
+}
+
+async function syncProgressionRole(member, level) {
+  if (!member?.roles) return;
+
+  const reward = getStatusRoleForLevel(level);
+
+  for (const roleId of getProgressionRoles()) {
+    if (roleId === reward.role) continue;
+
+    if (member.roles.cache.has(roleId)) {
+      await member.roles.remove(roleId).catch(error => {
+        console.log(`[LEVELS] Could not remove progression role ${roleId} from ${member.user.tag}: ${error.message}`);
+      });
+    }
+  }
+
+  if (reward.role && !member.roles.cache.has(reward.role)) {
+    await member.roles.add(reward.role).catch(error => {
+      console.log(`[LEVELS] Could not add progression role ${reward.role} to ${member.user.tag}: ${error.message}`);
+    });
+  }
 }
 
 async function giveLevelRoles(member, level) {
   if (!member?.roles) return;
 
-  for (const reward of rewardRolesForLevel(level)) {
+  await syncProgressionRole(member, level);
+
+  for (const reward of getPlainLevelRewards(level)) {
     if (!member.roles.cache.has(reward.role)) {
       await member.roles.add(reward.role).catch(error => {
-        console.log(`[LEVELS] Could not add role ${reward.role} to ${member.user.tag}: ${error.message}`);
+        console.log(`[LEVELS] Could not add level role ${reward.role} to ${member.user.tag}: ${error.message}`);
       });
     }
   }
@@ -88,14 +113,15 @@ async function announceLevelUp(guild, member, level, source = 'Chat') {
   const channel = await guild.channels.fetch(config.channels.levels).catch(() => null);
   if (!channel) return;
 
+  const status = getStatusRoleForLevel(level);
+
   const embed = new EmbedBuilder()
     .setTitle('Level Up')
     .setColor(config.colors.red)
     .setDescription(`${member} just hit **Level ${level}**`)
     .addFields(
       { name: 'Source', value: source, inline: true },
-      { name: 'Member', value: `${member.user.tag}`, inline: true },
-      { name: 'Reward', value: getRewardText(level), inline: false }
+      { name: 'Unlocked', value: status.name, inline: true }
     )
     .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 256 }))
     .setFooter({ text: '/ritual' })
@@ -126,9 +152,7 @@ async function awardXp(guild, member, amount, source = 'Chat') {
 
   await giveLevelRoles(member, newLevel);
 
-  if (newLevel > oldLevel) {
-    await announceLevelUp(guild, member, newLevel, source);
-  }
+  if (newLevel > oldLevel) await announceLevelUp(guild, member, newLevel, source);
 }
 
 async function setUserLevel(guild, member, level, source = 'Staff Level Update') {
@@ -170,9 +194,7 @@ async function addMessageXp(message) {
 
   await giveLevelRoles(message.member, newLevel);
 
-  if (newLevel > oldLevel) {
-    await announceLevelUp(message.guild, message.member, newLevel, 'Chat');
-  }
+  if (newLevel > oldLevel) await announceLevelUp(message.guild, message.member, newLevel, 'Chat');
 }
 
 async function runVoiceXpSweep(client) {
@@ -190,9 +212,7 @@ async function runVoiceXpSweep(client) {
     return realUsersInChannel >= 2;
   });
 
-  for (const member of members.values()) {
-    await awardXp(guild, member, 10, 'Voice Chat');
-  }
+  for (const member of members.values()) await awardXp(guild, member, 10, 'Voice Chat');
 }
 
 function getProfile(guildId, userId) {

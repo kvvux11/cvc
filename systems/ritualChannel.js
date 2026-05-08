@@ -1,4 +1,3 @@
-const { PermissionFlagsBits } = require('discord.js');
 const config = require('../config');
 
 async function enforceRitualChannelPermissions(client) {
@@ -12,20 +11,19 @@ async function enforceRitualChannelPermissions(client) {
   }
 
   const allowedRoles = [
-    config.roles.trusted,
-    config.roles.known,
-    config.roles.proven,
-    config.roles.elite,
-    config.roles.ascendant,
-    config.roles.obsidian,
-    config.roles.booster,
-    config.roles.ticketSupport,
-    config.roles.staff,
-    config.roles.trialModerator,
-    config.roles.moderator,
-    config.roles.administrator,
-    config.roles.owner,
-  ].filter(Boolean);
+    ['trusted', config.roles.trusted],
+    ['known', config.roles.known],
+    ['proven', config.roles.proven],
+    ['elite', config.roles.elite],
+    ['ascendant', config.roles.ascendant],
+    ['obsidian', config.roles.obsidian],
+    ['ticketSupport', config.roles.ticketSupport],
+    ['staff', config.roles.staff],
+    ['trialModerator', config.roles.trialModerator],
+    ['moderator', config.roles.moderator],
+    ['administrator', config.roles.administrator],
+    ['owner', config.roles.owner],
+  ];
 
   await channel.permissionOverwrites.edit(channel.guild.roles.everyone.id, {
     SendMessages: false,
@@ -36,15 +34,26 @@ async function enforceRitualChannelPermissions(client) {
     console.log(`[RITUAL CHANNEL] Could not lock @everyone: ${error.message}`);
   });
 
-  for (const roleId of allowedRoles) {
-    await channel.permissionOverwrites.edit(roleId, {
+  for (const [name, id] of allowedRoles) {
+    if (!id) continue;
+
+    const role = await channel.guild.roles.fetch(id).catch(() => null);
+
+    if (!role) {
+      console.log(`[RITUAL CHANNEL] Skipped missing role "${name}" (${id})`);
+      continue;
+    }
+
+    console.log(`[RITUAL CHANNEL] Allowing ${name} -> ${role.name}`);
+
+    await channel.permissionOverwrites.edit(role.id, {
       ViewChannel: true,
       SendMessages: true,
       SendMessagesInThreads: true,
       CreatePublicThreads: true,
       ReadMessageHistory: true,
     }).catch(error => {
-      console.log(`[RITUAL CHANNEL] Could not allow role ${roleId}: ${error.message}`);
+      console.log(`[RITUAL CHANNEL] Could not allow role "${name}" (${id}): ${error.message}`);
     });
   }
 

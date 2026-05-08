@@ -1,22 +1,30 @@
 # FAQ
 
 ## What is /ritual?
-/ritual is a dark community server built around chat, media, voice, giveaways, events, profiles, banners, cars, animals, and a custom bot.
+/ritual is a dark community server for chatting, media, pfps, banners, calls, events, giveaways, levels, and custom bot features.
 
-## What is skid?
-skid is the server bot. It handles tickets, levels, logs, applications, voice channels, commands, and auto media posting.
+## How do I unlock better roles?
+Chat, be active, and level up.
 
-## How do I level up?
-Chat normally and join active voice calls. Spam does not help.
+Level rewards:
+Level 10 → Verified
+Level 20 → Trusted
+Level 40 → Known
+Level 50 → Proven
+Level 100 → Elite
+Level 1000 → Ascendant
 
-## How do I get special roles?
-Open a ticket and ask about special roles. Obsidian, Ascendant, custom roles, and private channels are handled through owner-approved payments.
+## How do I speak in the ritual channel?
+You need Trusted or higher. Trusted unlocks at Level 20.
 
-## Can I apply for staff?
-Yes. Use the application panel. The bot will DM you the questions one by one.
+## Can I buy roles?
+Yes. Obsidian and Ascendant are special paid roles. Ascendant can also be earned free at Level 1000.
 
-## Why did my application get denied automatically?
-Your answer was too short, fake, or low effort. Reapply when you are ready to answer properly.
+## What is Obsidian?
+Obsidian is the highest paid status role. It is not earned by leveling.
 
-## Can staff see private channels?
-Yes. Private channels are private from members, not from staff.
+## What is Ascendant?
+Ascendant is a special status role. You can buy it or earn it free at Level 1000.
+
+## How do I buy special roles?
+Open a ticket and wait for the owner to respond. Payments are handled by the owner only.

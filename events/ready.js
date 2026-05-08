@@ -13,12 +13,7 @@ module.exports = {
     console.log(`Logged in as ${client.user.tag}`);
 
     client.user.setPresence({
-      activities: [
-        {
-          name: '/ritual',
-          type: ActivityType.Watching,
-        },
-      ],
+      activities: [{ name: '/ritual', type: ActivityType.Watching }],
       status: 'dnd',
     });
 

@@ -21,9 +21,7 @@ async function postServerUpdate(client) {
   if (postedThisRun) return;
   postedThisRun = true;
 
-  const channel = await client.channels
-    .fetch(config.channels.serverUpdates)
-    .catch(() => null);
+  const channel = await client.channels.fetch(config.channels.serverUpdates).catch(() => null);
 
   if (!channel) {
     console.log('[SERVER UPDATES] Channel not found.');
@@ -50,13 +48,9 @@ async function postServerUpdate(client) {
     .setFooter({ text: 'skid system update' })
     .setTimestamp();
 
-  await channel.send({
-    embeds: [embed],
-  }).catch(console.error);
+  await channel.send({ embeds: [embed] }).catch(console.error);
 
   console.log('[SERVER UPDATES] Posted latest commit message.');
 }
 
-module.exports = {
-  postServerUpdate,
-};
+module.exports = { postServerUpdate };

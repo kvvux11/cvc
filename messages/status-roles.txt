@@ -1,51 +1,38 @@
-# Special Roles
+# ⌁ Special Roles
 
-Special roles are optional paid perks for members who want higher placement, private access, or custom features.
+Special roles are optional paid perks for members who want extra access, status, or custom features inside /ritual.
+
+Payments are handled through tickets only. Do not send money to random members.
 
 ## ⛧ Obsidian
-Highest special role.
+Highest paid status role.
 
-Includes:
-• private Obsidian chat
-• higher role placement
-• priority support
-• special role color
-• access to selected perks
+Price:
+• $5 monthly
+• $12 permanent
 
 ## ⟡ Ascendant
-Lower special role.
+Paid status role, or earned free by reaching Level 1000.
 
-Includes:
-• Ascendant chat
-• better role placement
-• priority support
-• selected perks
+Price:
+• $3 monthly
+• $8 permanent
 
-## Custom Role
-Pick your own role name and color.
+## ⌁ Custom Role
+Choose your own role name and color.
 
-Rules:
-• no staff names
-• no impersonation
-• no slurs
-• no dox/threat names
-• staff can deny anything that causes issues
+Price:
+• $5 one-time
 
-## Private Channel
-Your own channel inside the private category.
+## ⌁ Private Channel
+A private channel gives you your own text channel.
 
-You can:
-• change the channel name/topic
-• invite/remove people
-• send files and links
-• manage your own channel
+Price:
+• $8 monthly
+• $18 permanent
 
-You cannot:
-• hide it from staff
-• post illegal content
-• dox/threaten/leak
-• abuse permissions
+## ⌁ Custom Bundle
+Custom role + private channel.
 
-## How to buy
-Open a ticket and select Special Roles.
-Only pay through the owner or approved Stripe link.
+Price:
+• $20 permanent
