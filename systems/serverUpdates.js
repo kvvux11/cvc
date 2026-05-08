@@ -1,9 +1,23 @@
 const { EmbedBuilder } = require('discord.js');
+const { execSync } = require('node:child_process');
 const config = require('../config');
 
 let postedThisRun = false;
 
-async function postServerUpdate(client, updates = []) {
+function getLatestCommitMessage() {
+  try {
+    const message = execSync('git log -1 --pretty=%B', {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+
+    return message || null;
+  } catch {
+    return null;
+  }
+}
+
+async function postServerUpdate(client) {
   if (postedThisRun) return;
   postedThisRun = true;
 
@@ -16,19 +30,23 @@ async function postServerUpdate(client, updates = []) {
     return;
   }
 
-  const updateList = Array.isArray(updates)
-    ? updates
-    : [String(updates)];
+  const commitMessage = getLatestCommitMessage();
 
-  const description = updateList
+  if (!commitMessage) {
+    console.log('[SERVER UPDATES] No git commit message found.');
+    return;
+  }
+
+  const cleanMessage = commitMessage
+    .split('\n')
+    .map(line => line.trim())
     .filter(Boolean)
-    .map(update => `• ${update}`)
     .join('\n');
 
   const embed = new EmbedBuilder()
     .setTitle('/ritual update')
     .setColor(config.colors.darkRed || config.colors.red)
-    .setDescription(description || 'skid has been updated.')
+    .setDescription(cleanMessage)
     .setFooter({ text: 'skid system update' })
     .setTimestamp();
 
@@ -36,7 +54,7 @@ async function postServerUpdate(client, updates = []) {
     embeds: [embed],
   }).catch(console.error);
 
-  console.log('[SERVER UPDATES] Posted update message.');
+  console.log('[SERVER UPDATES] Posted latest commit message.');
 }
 
 module.exports = {

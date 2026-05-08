@@ -1,43 +1,40 @@
-# Roles
+# ⛧ Roles
+
+⌁ Initiate
+Default member role.
+
+⟐ Verified
+Unlocked at Level 10.
+
+⟡ Trusted
+Unlocked at Level 20. Trusted members can chat in the ritual channel.
+
+⟠ Known
+Unlocked at Level 40.
+
+⛧ Proven
+Unlocked at Level 50.
+
+♱ Elite
+Unlocked at Level 100.
+
+⟡ Ascendant
+Paid status role, or earned free at Level 1000.
+
+⛧ Obsidian
+Highest paid status role.
 
 ✟ Founder
 Server owner.
 
 ⟡ Warden
-High staff. Handles serious issues, bans, staff decisions, and server control.
+Administrator.
 
 ⟠ Enforcer
-Moderator. Handles tickets, reports, timeouts, kicks, chat control, and rule breaking.
+Moderator.
 
 ⌁ Trial
-Trial staff with limited perms. Mainly timeouts, clears, tickets, and basic moderation.
+Trial moderator.
 
 ✦ Support
-Ticket/support helper. Helps members but does not have full mod power.
-
-⛧ Staff
-General staff access role. This alone does not mean full moderation power.
-
-⛧ Obsidian
-Highest special role. Higher placement, private chat access, and better priority.
-
-⟡ Ascendant
-Lower special role. Better placement and priority without full Obsidian perks.
-
-♱ Booster
-Server booster role.
-
-✦ Elite / ⛧ Proven / ⟠ Known / ⟡ Trusted / ⟐ Verified / ⌁ Initiate
-Member status roles earned through activity, trust, or staff approval.
-
-⌁ Level 10 / ⟐ Level 20 / ⟡ Level 40 / ⟠ Level 50 / ⛧ Level 100 / ♱ Level 1000
-Level roles earned from chatting and VC activity.
-
-⟐ Giveaway Winner
-Given to giveaway winners.
-
-PC / Xbox / Playstation
-Platform roles.
-
-Media / Events / Giveaways
-Ping roles for people who want those alerts.
+Ticket support.

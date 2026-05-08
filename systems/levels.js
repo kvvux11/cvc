@@ -36,45 +36,72 @@ function xpForLevel(level) {
 
 function calculateLevel(xp) {
   let level = 0;
-  while (xp >= xpForLevel(level + 1)) level++;
+
+  while (xp >= xpForLevel(level + 1)) {
+    level++;
+  }
+
   return level;
 }
 
-async function giveLevelRoles(member, level) {
-  if (!member) return;
-
-  const rewards = [
+function rewardRolesForLevel(level) {
+  return [
     { level: 10, role: config.roles.level10 },
     { level: 20, role: config.roles.level20 },
     { level: 40, role: config.roles.level40 },
     { level: 50, role: config.roles.level50 },
     { level: 100, role: config.roles.level100 },
     { level: 1000, role: config.roles.level1000 },
-  ];
 
-  for (const reward of rewards) {
-    if (reward.role && level >= reward.level && !member.roles.cache.has(reward.role)) {
-      await member.roles.add(reward.role).catch(console.error);
+    { level: 10, role: config.roles.verified },
+    { level: 20, role: config.roles.trusted },
+    { level: 40, role: config.roles.known },
+    { level: 50, role: config.roles.proven },
+    { level: 100, role: config.roles.elite },
+    { level: 1000, role: config.roles.ascendant },
+  ].filter(reward => level >= reward.level && reward.role);
+}
+
+function getRewardText(level) {
+  if (level >= 1000) return '⟡ Ascendant unlocked.';
+  if (level >= 100) return '♱ Elite unlocked.';
+  if (level >= 50) return '⛧ Proven unlocked.';
+  if (level >= 40) return '⟠ Known unlocked.';
+  if (level >= 20) return '⟡ Trusted unlocked.';
+  if (level >= 10) return '⟐ Verified unlocked.';
+  return 'Keep climbing.';
+}
+
+async function giveLevelRoles(member, level) {
+  if (!member?.roles) return;
+
+  for (const reward of rewardRolesForLevel(level)) {
+    if (!member.roles.cache.has(reward.role)) {
+      await member.roles.add(reward.role).catch(error => {
+        console.log(`[LEVELS] Could not add role ${reward.role} to ${member.user.tag}: ${error.message}`);
+      });
     }
   }
 }
 
 async function announceLevelUp(guild, member, level, source = 'Chat') {
   const channel = await guild.channels.fetch(config.channels.levels).catch(() => null);
-  if (!channel || !member) return;
+  if (!channel) return;
 
   const embed = new EmbedBuilder()
     .setTitle('Level Up')
     .setColor(config.colors.red)
-    .setDescription(`${member} reached **Level ${level}**`)
+    .setDescription(`${member} just hit **Level ${level}**`)
     .addFields(
       { name: 'Source', value: source, inline: true },
-      { name: 'Member', value: member.user.tag, inline: true }
+      { name: 'Member', value: `${member.user.tag}`, inline: true },
+      { name: 'Reward', value: getRewardText(level), inline: false }
     )
     .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 256 }))
-    .setImage(config.images.levelUp)
     .setFooter({ text: '/ritual' })
     .setTimestamp();
+
+  if (config.images?.levelUp) embed.setImage(config.images.levelUp);
 
   await channel.send({
     content: `${member}`,
@@ -159,7 +186,8 @@ async function runVoiceXpSweep(client) {
     const voice = member.voice;
     if (!voice?.channel) return false;
     if (voice.channelId === guild.afkChannelId) return false;
-    return voice.channel.members.filter(m => !m.user.bot).size >= 2;
+    const realUsersInChannel = voice.channel.members.filter(m => !m.user.bot).size;
+    return realUsersInChannel >= 2;
   });
 
   for (const member of members.values()) {
