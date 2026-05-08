@@ -181,12 +181,14 @@ function extractPostLinks(html, baseUrl, typeName) {
 function getSourcePages(type) {
   if (type.name === 'banners') {
     return [
+      'https://pfps.gg/banners/cool',
       'https://pfps.gg/banners',
-      'https://pfps.gg/banners/discord',
-      'https://pfps.gg/search?q=banner',
-      'https://pfps.gg/search?q=dark%20banner',
+      'https://pfps.gg/search?q=cool%20banner',
+      'https://pfps.gg/search?q=dark%20cool%20banner',
       'https://pfps.gg/search?q=anime%20banner',
       'https://pfps.gg/search?q=aesthetic%20banner',
+      'https://pfps.gg/search?q=matching%20banner',
+      'https://pfps.gg/search?q=red%20banner',
     ];
   }
 
@@ -395,11 +397,7 @@ async function postOne(client) {
 
     posted = await sendLocalMedia(channel, type);
     if (!posted) posted = await sendCuratedMedia(channel, type);
-
-    // Render often gets blocked by pfps.gg. This uses images already posted in your channels.
     if (!posted) posted = await sendDiscordHistoryMedia(client, channel, type);
-
-    // Last fallback. Works locally sometimes, may return 0 on Render.
     if (!posted) posted = await sendScrapedMedia(channel, type);
 
     if (!posted) {
