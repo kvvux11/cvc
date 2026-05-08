@@ -9,8 +9,19 @@ let typeIndex = 0;
 const validExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.webp'];
 const historyPath = './sources/media-history.json';
 
+const pools = {
+  pfps: [],
+  banners: [],
+};
+
+const lastPosted = {
+  pfps: null,
+  banners: null,
+};
+
 function getIntervalMs() {
-  return config.mediaPoster?.intervalMs || 5000;
+  // 5 seconds is spammy and makes repeats way more obvious.
+  return config.mediaPoster?.intervalMs || 60000;
 }
 
 function ensureFolder(folderPath) {
@@ -43,9 +54,13 @@ function writeHistory(data) {
   fs.writeFileSync(historyPath, JSON.stringify(data, null, 2), 'utf8');
 }
 
-function hasBeenUsed(typeName, value) {
+function getUsed(typeName) {
   const history = readHistory();
-  return Array.isArray(history[typeName]) && history[typeName].includes(value);
+  return Array.isArray(history[typeName]) ? history[typeName] : [];
+}
+
+function hasBeenUsed(typeName, value) {
+  return getUsed(typeName).includes(value);
 }
 
 function markUsed(typeName, value) {
@@ -53,13 +68,23 @@ function markUsed(typeName, value) {
   if (!Array.isArray(history[typeName])) history[typeName] = [];
 
   history[typeName].push(value);
-  history[typeName] = [...new Set(history[typeName])].slice(-250);
+  history[typeName] = [...new Set(history[typeName])].slice(-500);
 
+  writeHistory(history);
+}
+
+function resetUsedForType(typeName) {
+  const history = readHistory();
+  history[typeName] = [];
   writeHistory(history);
 }
 
 function shuffle(arr) {
   return [...arr].sort(() => Math.random() - 0.5);
+}
+
+function isImageUrl(url) {
+  return /\.(png|jpg|jpeg|gif|webp)(\?.*)?$/i.test(String(url || ''));
 }
 
 function getLocalFiles(folderPath) {
@@ -82,30 +107,8 @@ function getCuratedUrls(filePath) {
     .filter(line => /^https?:\/\//i.test(line));
 }
 
-function isImageUrl(url) {
-  return /\.(png|jpg|jpeg|gif|webp)(\?.*)?$/i.test(url);
-}
-
-function cleanUrl(url) {
-  return String(url || '')
-    .replaceAll('&amp;', '&')
-    .replaceAll('\\/', '/')
-    .trim();
-}
-
-function normalizeUrl(raw, baseUrl) {
-  let url = cleanUrl(raw);
-  if (!url) return null;
-
-  if (url.startsWith('//')) url = `https:${url}`;
-  if (url.startsWith('/')) url = new URL(url, baseUrl).toString();
-  if (!/^https?:\/\//i.test(url)) return null;
-
-  return url;
-}
-
 function imageLooksBad(url) {
-  const lower = url.toLowerCase();
+  const lower = String(url || '').toLowerCase();
 
   return (
     lower.includes('logo') ||
@@ -123,118 +126,6 @@ function imageLooksBad(url) {
   );
 }
 
-async function fetchHtml(url) {
-  const res = await fetch(url, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 skid-discord-bot',
-      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-      Referer: 'https://pfps.gg/',
-    },
-  }).catch(() => null);
-
-  if (!res || !res.ok) return null;
-  return res.text().catch(() => null);
-}
-
-function extractImageUrls(html, baseUrl) {
-  const found = new Set();
-
-  const patterns = [
-    /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/gi,
-    /<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/gi,
-    /(?:src|data-src|data-lazy-src)=["']([^"']+\.(?:png|jpg|jpeg|gif|webp)(?:\?[^"']*)?)["']/gi,
-    /(https?:\/\/[^"' <>()]+?\.(?:png|jpg|jpeg|gif|webp)(?:\?[^"' <>()]*)?)/gi,
-  ];
-
-  for (const pattern of patterns) {
-    for (const match of html.matchAll(pattern)) {
-      const raw = match[1] || match[0];
-      const url = normalizeUrl(raw, baseUrl);
-
-      if (!url) continue;
-      if (imageLooksBad(url)) continue;
-
-      found.add(url);
-    }
-  }
-
-  return [...found];
-}
-
-function extractPostLinks(html, baseUrl, typeName) {
-  const links = new Set();
-  const hrefs = [...html.matchAll(/href=["']([^"']+)["']/gi)].map(match => match[1]);
-
-  for (const href of hrefs) {
-    const full = normalizeUrl(href, baseUrl);
-    if (!full) continue;
-
-    const lower = full.toLowerCase();
-
-    if (typeName === 'pfps' && lower.includes('/pfp/')) links.add(full);
-    if (typeName === 'banners' && lower.includes('/banner/')) links.add(full);
-  }
-
-  return [...links];
-}
-
-function getSourcePages(type) {
-  if (type.name === 'banners') {
-    return [
-      'https://pfps.gg/banners/cool',
-      'https://pfps.gg/banners',
-      'https://pfps.gg/search?q=cool%20banner',
-      'https://pfps.gg/search?q=dark%20cool%20banner',
-      'https://pfps.gg/search?q=anime%20banner',
-      'https://pfps.gg/search?q=aesthetic%20banner',
-      'https://pfps.gg/search?q=matching%20banner',
-      'https://pfps.gg/search?q=red%20banner',
-    ];
-  }
-
-  return [
-    'https://pfps.gg/',
-    'https://pfps.gg/search',
-    'https://pfps.gg/search?q=dark',
-    'https://pfps.gg/search?q=black',
-    'https://pfps.gg/search?q=aesthetic',
-    'https://pfps.gg/search?q=anime',
-    'https://pfps.gg/search?q=goth',
-    'https://pfps.gg/search?q=grunge',
-    'https://pfps.gg/search?q=emo',
-  ];
-}
-
-async function scrapePfpsSource(type) {
-  const images = new Set();
-
-  for (const pageUrl of getSourcePages(type)) {
-    const html = await fetchHtml(pageUrl);
-    if (!html) continue;
-
-    for (const img of extractImageUrls(html, pageUrl)) {
-      images.add(img);
-    }
-
-    const postLinks = extractPostLinks(html, pageUrl, type.name);
-
-    for (const postUrl of shuffle(postLinks).slice(0, 30)) {
-      const postHtml = await fetchHtml(postUrl);
-      if (!postHtml) continue;
-
-      for (const img of extractImageUrls(postHtml, postUrl)) {
-        images.add(img);
-      }
-
-      if (images.size >= 100) break;
-    }
-
-    if (images.size >= 100) break;
-  }
-
-  return [...images];
-}
-
 async function fetchDiscordChannelImages(client, type) {
   const channel = await client.channels.fetch(type.channelId).catch(() => null);
   if (!channel?.messages?.fetch) return [];
@@ -245,19 +136,64 @@ async function fetchDiscordChannelImages(client, type) {
   const urls = new Set();
 
   for (const message of messages.values()) {
+    // do not reuse media skid already posted itself
+    if (message.author?.id === client.user.id) continue;
+
     for (const attachment of message.attachments.values()) {
       if (attachment?.contentType?.startsWith('image/') || isImageUrl(attachment.url)) {
-        urls.add(attachment.url);
+        if (!imageLooksBad(attachment.url)) urls.add(attachment.url);
       }
     }
 
     for (const embed of message.embeds || []) {
-      if (embed.image?.url && isImageUrl(embed.image.url)) urls.add(embed.image.url);
-      if (embed.thumbnail?.url && isImageUrl(embed.thumbnail.url)) urls.add(embed.thumbnail.url);
+      if (embed.image?.url && isImageUrl(embed.image.url) && !imageLooksBad(embed.image.url)) {
+        urls.add(embed.image.url);
+      }
+
+      if (embed.thumbnail?.url && isImageUrl(embed.thumbnail.url) && !imageLooksBad(embed.thumbnail.url)) {
+        urls.add(embed.thumbnail.url);
+      }
     }
   }
 
   return [...urls];
+}
+
+async function buildPool(client, type) {
+  const localFiles = getLocalFiles(type.folder).map(file => ({
+    kind: 'local',
+    value: file,
+  }));
+
+  const sourceUrls = getCuratedUrls(type.urlsFile)
+    .filter(url => !imageLooksBad(url))
+    .map(url => ({
+      kind: 'url',
+      value: url,
+    }));
+
+  const channelHistoryUrls = await fetchDiscordChannelImages(client, type).catch(() => []);
+  const channelHistory = channelHistoryUrls.map(url => ({
+    kind: 'url',
+    value: url,
+  }));
+
+  const seen = new Set();
+  const combined = [...localFiles, ...sourceUrls, ...channelHistory].filter(item => {
+    if (!item?.value) return false;
+    if (seen.has(item.value)) return false;
+    seen.add(item.value);
+    return true;
+  });
+
+  pools[type.name] = shuffle(combined);
+
+  console.log(
+    `[AUTO MEDIA] ${type.name} pool rebuilt: ${combined.length} images ` +
+    `(local ${localFiles.length}, sources ${sourceUrls.length}, channel ${channelHistory.length})`
+  );
+
+  return pools[type.name];
 }
 
 async function sendAsUploadFromUrl(channel, typeName, label, imageUrl) {
@@ -265,7 +201,6 @@ async function sendAsUploadFromUrl(channel, typeName, label, imageUrl) {
     headers: {
       'User-Agent': 'Mozilla/5.0 skid-discord-bot',
       Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-      Referer: 'https://pfps.gg/',
     },
   }).catch(() => null);
 
@@ -294,66 +229,65 @@ async function sendAsUploadFromUrl(channel, typeName, label, imageUrl) {
   return true;
 }
 
-async function sendLocalMedia(channel, type) {
-  const files = getLocalFiles(type.folder);
-  if (!files.length) return false;
-
-  const unused = shuffle(files).filter(file => !hasBeenUsed(type.name, file));
-  const selected = unused[0] || shuffle(files)[0];
-
-  if (!selected) return false;
-
+async function sendLocalFile(channel, type, filePath) {
   await channel.send({
     content: `⌁ ${type.label}`,
-    files: [new AttachmentBuilder(selected)],
+    files: [new AttachmentBuilder(filePath)],
   });
 
-  markUsed(type.name, selected);
   return true;
 }
 
-async function sendFromUrls(channel, type, urls, sourceName) {
-  if (!urls.length) return false;
+async function postFromPool(client, channel, type) {
+  let pool = pools[type.name] || [];
 
-  const clean = [...new Set(urls)]
-    .filter(Boolean)
-    .filter(url => !imageLooksBad(url));
+  if (!pool.length) {
+    pool = await buildPool(client, type);
+  }
 
-  const unused = shuffle(clean).filter(url => !hasBeenUsed(type.name, url));
-  const candidates = unused.length ? unused : shuffle(clean);
+  if (!pool.length) {
+    console.log(
+      `[AUTO MEDIA] No curated ${type.name} available. ` +
+      `Add images to ${type.folder}, ${type.urlsFile}, or manually post images in that channel.`
+    );
+    return false;
+  }
 
-  for (const selected of candidates.slice(0, 25)) {
-    const ok = await sendAsUploadFromUrl(channel, type.name, type.label, selected).catch(() => false);
+  let candidates = pool.filter(item => {
+    if (item.value === lastPosted[type.name]) return false;
+    return !hasBeenUsed(type.name, item.value);
+  });
+
+  if (!candidates.length) {
+    resetUsedForType(type.name);
+    await buildPool(client, type);
+    pool = pools[type.name] || [];
+
+    candidates = pool.filter(item => item.value !== lastPosted[type.name]);
+    if (!candidates.length) candidates = pool;
+  }
+
+  const shuffled = shuffle(candidates);
+
+  for (const selected of shuffled.slice(0, 20)) {
+    let ok = false;
+
+    if (selected.kind === 'local') {
+      ok = await sendLocalFile(channel, type, selected.value).catch(() => false);
+    } else {
+      ok = await sendAsUploadFromUrl(channel, type.name, type.label, selected.value).catch(() => false);
+    }
 
     if (ok) {
-      markUsed(type.name, selected);
-      console.log(`[AUTO MEDIA] Posted ${type.name} from ${sourceName}.`);
+      lastPosted[type.name] = selected.value;
+      markUsed(type.name, selected.value);
+      console.log(`[AUTO MEDIA] Posted ${type.name} from curated pool.`);
       return true;
     }
   }
 
+  console.log(`[AUTO MEDIA] Failed to post any ${type.name} candidate from pool.`);
   return false;
-}
-
-async function sendCuratedMedia(channel, type) {
-  const urls = getCuratedUrls(type.urlsFile);
-  return sendFromUrls(channel, type, urls, 'sources txt');
-}
-
-async function sendDiscordHistoryMedia(client, channel, type) {
-  const urls = await fetchDiscordChannelImages(client, type).catch(() => []);
-  console.log(`[AUTO MEDIA] ${type.name} found ${urls.length} images in channel history.`);
-  return sendFromUrls(channel, type, urls, 'channel history');
-}
-
-async function sendScrapedMedia(channel, type) {
-  const scraped = await scrapePfpsSource(type).catch(error => {
-    console.log(`[AUTO MEDIA] scrape error for ${type.name}: ${error.message}`);
-    return [];
-  });
-
-  console.log(`[AUTO MEDIA] ${type.name} scraped ${scraped.length} candidates.`);
-  return sendFromUrls(channel, type, scraped, 'pfps.gg');
 }
 
 function getMediaTypes() {
@@ -392,23 +326,7 @@ async function postOne(client) {
     return;
   }
 
-  try {
-    let posted = false;
-
-    posted = await sendLocalMedia(channel, type);
-    if (!posted) posted = await sendCuratedMedia(channel, type);
-    if (!posted) posted = await sendDiscordHistoryMedia(client, channel, type);
-    if (!posted) posted = await sendScrapedMedia(channel, type);
-
-    if (!posted) {
-      console.log(`[AUTO MEDIA] Nothing available for ${type.name}. Add images to assets, sources txt, or post some in the channel first.`);
-      return;
-    }
-
-    console.log(`[AUTO MEDIA] Posted ${type.name}`);
-  } catch (error) {
-    console.error(`[AUTO MEDIA] Failed posting ${type.name}:`, error.message);
-  }
+  await postFromPool(client, channel, type);
 }
 
 function startMediaPoster(client) {
@@ -421,11 +339,17 @@ function startMediaPoster(client) {
 
   started = true;
 
-  console.log(`[AUTO MEDIA] Started. Posting every ${getIntervalMs()}ms.`);
+  console.log(`[AUTO MEDIA] Curated mode started. Posting every ${getIntervalMs()}ms.`);
 
-  setTimeout(() => {
-    postOne(client).catch(console.error);
-  }, 3000);
+  setTimeout(async () => {
+    for (const type of getMediaTypes()) {
+      await buildPool(client, type).catch(error => {
+        console.log(`[AUTO MEDIA] Could not build ${type.name} pool: ${error.message}`);
+      });
+    }
+
+    await postOne(client).catch(console.error);
+  }, 5000);
 
   setInterval(() => {
     postOne(client).catch(console.error);
